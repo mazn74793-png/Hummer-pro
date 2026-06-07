@@ -1,0 +1,38 @@
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700;800;900&family=Space+Grotesk:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
+
+html {
+  scroll-behavior: smooth;
+  scroll-padding-top: 140px; /* offset for sticky sticky header and promo banner height */
+  -webkit-overflow-scrolling: touch;
+}
+
+@theme {
+  --font-sans: "Cairo", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk", "Cairo", sans-serif;
+  --font-mono: "Space Grotesk", monospace;
+}
+
+@layer base {
+  body {
+    background-color: #f4f4f5; /* zinc-100 / zinc-50 theme */
+    color: #18181b; /* zinc-900 */
+    font-family: var(--font-sans);
+    overflow-x: hidden;
+  }
+}
+
+/* Custom food item animations */
+.crispy-glow {
+  box-shadow: 0 0 20px rgba(234, 88, 12, 0.15);
+}
+
+.crispy-glow:hover {
+  box-shadow: 0 0 30px rgba(234, 88, 12, 0.3);
+}
+
+/* RTL layout fixes */
+.rtl-flip {
+  transform: scaleX(-1);
+}
+

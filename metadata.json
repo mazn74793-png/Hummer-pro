@@ -1,0 +1,6 @@
+{
+  "name": "Hummer Crepes & Fried Chicken",
+  "description": "الموقع الرسمي لمطعم همر - أقوى كريبات وألذ فراخ مقلية كريسبي بتتبيلة همر السرية وبطعم لا يقاوم!",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
