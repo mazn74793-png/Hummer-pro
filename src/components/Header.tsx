@@ -112,37 +112,37 @@ export default function Header({
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-1 sm:py-1.5 flex items-center justify-between">
         {/* Logo and Tagline matching layout with freshly generated branding logo */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex items-center gap-2">
           <div className="relative shrink-0">
             <motion.img 
               whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.05 }}
               transition={{ duration: 0.5 }}
-              src={siteSettings?.logoUrl || defaultLogo}
+              src={(siteSettings?.logoUrl && siteSettings.logoUrl !== 'local-db:logoUrl') ? siteSettings.logoUrl : defaultLogo}
               alt="Hummer Brand Logo"
               referrerPolicy="no-referrer"
-              className="w-10 h-10 rounded-xl object-cover bg-zinc-950 shadow-md cursor-pointer"
+              className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover bg-zinc-950 shadow-md cursor-pointer"
             />
           </div>
           <div>
-            <h1 className="text-base sm:text-lg font-black text-zinc-900 tracking-tighter flex items-center gap-1 font-sans leading-none">
+            <h1 className="text-sm sm:text-base font-black text-zinc-900 tracking-tighter flex items-center gap-1 font-sans leading-none">
               {isRtl ? 'مطعم هامر' : 'Hummer Restaurant'}
-              <span className="text-red-700 text-[8.5px] font-black animate-pulse px-1.5 py-0.2 bg-red-50 rounded border border-red-200 tracking-wider">
+              <span className="text-red-700 text-[8px] sm:text-[8.5px] font-black animate-pulse px-1 sm:px-1.5 py-0.2 bg-red-50 rounded border border-red-200 tracking-wider">
                 CRISPY
               </span>
             </h1>
-            <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wide mt-0.5">
+            <p className="text-[8px] sm:text-[9px] text-zinc-400 font-bold uppercase tracking-wide mt-0.5">
               {isRtl ? 'ملك الكريبات وأقوى فرخة وبطاطس مقرمشة' : 'King of Crepes & Best Crispy Chicken'}
             </p>
           </div>
         </div>
 
         {/* Header Actions & Detection System badge */}
-        <div className="flex items-center gap-2 sm:gap-3">
+        <div className="flex items-center gap-1.5 sm:gap-2">
           {/* Active Device Detector Pill */}
-          <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 bg-zinc-50 border border-zinc-200 text-zinc-650 rounded-xl text-[10px] font-black uppercase tracking-wider select-none">
-            {deviceMeta.isPhone ? <Smartphone className="w-3.5 h-3.5 text-zinc-500" /> : <Laptop className="w-3.5 h-3.5 text-zinc-500" />}
+          <div className="hidden lg:flex items-center gap-1 px-2.5 py-1 bg-zinc-50 border border-zinc-200 text-zinc-650 rounded-lg text-[9px] font-black uppercase tracking-wider select-none">
+            {deviceMeta.isPhone ? <Smartphone className="w-3 h-3 text-zinc-500" /> : <Laptop className="w-3 h-3 text-zinc-500" />}
             <span>
               {isRtl ? 'الكشف تلقائياً:' : 'Auto Detect:'}{' '}
               <span className="text-red-600 font-extrabold">{deviceMeta.os}</span>
@@ -154,16 +154,16 @@ export default function Header({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onOpenWheel}
-            className="flex items-center gap-1.5 px-3 sm:px-4 py-2 bg-amber-400 hover:bg-amber-300 text-black rounded-xl text-xs font-black shadow-sm hover:shadow transition-all border-2 border-black cursor-pointer"
+            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 bg-amber-400 hover:bg-amber-300 text-black rounded-lg text-[10px] sm:text-xs font-black shadow-sm hover:shadow transition-all border border-black cursor-pointer"
           >
-            <Gift className="w-4 h-4 animate-bounce text-black" />
+            <Gift className="w-3.5 h-3.5 animate-bounce text-black" />
             <span className="hidden sm:inline uppercase">{isRtl ? 'عجلة الحظ' : 'Lucky Wheel'}</span>
           </motion.button>
 
           {/* Lang Selector */}
           <button
             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
-            className="px-2.5 sm:px-3 py-2 rounded-xl border border-zinc-200 text-xs text-zinc-750 bg-white hover:bg-zinc-50 hover:text-black font-black font-mono transition shadow-xs cursor-pointer"
+            className="px-1.5 sm:px-2 py-1 sm:py-1.5 rounded-lg border border-zinc-200 text-[10px] sm:text-xs text-zinc-750 bg-white hover:bg-zinc-50 hover:text-black font-black font-mono transition shadow-xs cursor-pointer"
           >
             {lang === 'ar' ? 'EN' : 'العربية'}
           </button>
@@ -173,11 +173,11 @@ export default function Header({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onOpenProfile}
-            className="p-2.5 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 hover:border-red-300 text-red-650 transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+            className="p-1 sm:p-1.5 bg-red-50 border border-red-100 rounded-lg hover:bg-red-100 hover:border-red-300 text-red-650 transition-all shadow-xs cursor-pointer flex items-center gap-1"
             title={isRtl ? 'حساب الأكيل والتتبع حي' : 'My Account & Live Track'}
           >
-            <User className="w-5 h-5 text-red-650 text-red-650 text-red-600 shrink-0" />
-            <span className="hidden md:inline text-xs font-black text-red-750 text-red-700">{isRtl ? 'حساب الأكيل' : 'My Profile'}</span>
+            <User className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-red-600 shrink-0" />
+            <span className="hidden md:inline text-[10px] sm:text-xs font-black text-red-700">{isRtl ? 'حساب الأكيل' : 'My Profile'}</span>
           </motion.button>
 
           {/* Cart Icon in Light Minimal style */}
@@ -185,17 +185,17 @@ export default function Header({
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
             onClick={onOpenCart}
-            className="relative p-2.5 bg-zinc-100 border border-zinc-200 rounded-xl hover:bg-zinc-50 hover:border-red-500 text-zinc-900 transition-all shadow-xs cursor-pointer"
+            className="relative p-1 sm:p-1.5 bg-zinc-100 border border-zinc-200 rounded-lg hover:bg-zinc-50 hover:border-red-500 text-zinc-900 transition-all shadow-xs cursor-pointer"
             id="cart-trigger-button"
           >
-            <ShoppingCart className="w-5 h-5 text-zinc-900" />
+            <ShoppingCart className="w-4 h-4 sm:w-4.5 sm:h-4.5 text-zinc-900" />
             <AnimatePresence>
               {cartCount > 0 && (
                 <motion.span
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   exit={{ scale: 0 }}
-                  className="absolute -top-1.5 -right-1.5 bg-red-600 text-white text-[10px] font-black font-mono h-5 min-w-5 px-1.5 rounded-full flex items-center justify-center shadow-md animate-bounce"
+                  className="absolute -top-1 -right-1 bg-red-600 text-white text-[8px] sm:text-[9px] font-black font-mono h-4 min-w-4 px-1 rounded-full flex items-center justify-center shadow-md animate-bounce"
                 >
                   {cartCount}
                 </motion.span>

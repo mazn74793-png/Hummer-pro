@@ -18,7 +18,7 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
 
   useEffect(() => {
     // 1. Check if video intro is configured & URL exists
-    if (siteSettings.disableIntro || !siteSettings.introVideoUrl) {
+    if (siteSettings.disableIntro || !siteSettings.introVideoUrl || siteSettings.introVideoUrl === 'local-db:introVideoUrl') {
       setShouldShow(false);
       return;
     }
