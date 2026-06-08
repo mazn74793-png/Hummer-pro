@@ -6,7 +6,7 @@ import {
   Trash2, ShieldCheck, ShoppingBag
 } from 'lucide-react';
 import { auth, db, googleProvider } from '../firebase';
-import { signInWithPopup, signOut, User as FirebaseUser } from 'firebase/auth';
+import { signInWithPopup, signOut, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
 interface UserProfileModalProps {
@@ -44,6 +44,11 @@ export default function UserProfileModal({
   const [newAddress, setNewAddress] = useState('');
   const [isSaving, setIsSaving] = useState(false);
   const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Fast login fields
+  const [fastLoginName, setFastLoginName] = useState('');
+  const [fastLoginPhone, setFastLoginPhone] = useState('');
+  const [fastLoginError, setFastLoginError] = useState('');
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((usr) => {
@@ -99,6 +104,51 @@ export default function UserProfileModal({
       await signInWithPopup(auth, googleProvider);
     } catch (err) {
       console.error('Error during Google Sign-In:', err);
+    }
+  };
+
+  const handleAnonymousSignIn = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFastLoginError('');
+
+    const nameVal = fastLoginName.trim();
+    const phoneVal = fastLoginPhone.trim();
+
+    if (!nameVal) {
+      setFastLoginError(isRtl ? 'من فضلك أدخل اسمك الثنائي أو الثلاثي' : 'Please enter your full name');
+      return;
+    }
+
+    if (phoneVal.length < 11 || !/^\d+$/.test(phoneVal)) {
+      setFastLoginError(isRtl ? 'برجاء كتابة رقم موبايل صحيح من ١١ رقم' : 'Please enter a valid 11-digit mobile number');
+      return;
+    }
+
+    setIsLoadingProfile(true);
+    try {
+      const userCredential = await signInAnonymously(auth);
+      const uid = userCredential.user.uid;
+
+      const docRef = doc(db, 'users', uid);
+      const newProfile: UserProfileData = {
+        uid,
+        name: nameVal,
+        phone: phoneVal,
+        email: 'fastfoodie@hummer.app',
+        addresses: [],
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(docRef, newProfile);
+      setProfileData(newProfile);
+      setFormName(newProfile.name);
+      setFormPhone(newProfile.phone);
+      setIsEditing(false); // registered successfully!
+    } catch (err: any) {
+      console.error('Fast anonymous login failed:', err);
+      setFastLoginError(isRtl ? `فشل الدخول السريع: ${err.message}` : `Fast login failed: ${err.message}`);
+    } finally {
+      setIsLoadingProfile(false);
     }
   };
 
@@ -224,32 +274,93 @@ export default function UserProfileModal({
         <div className="p-6 overflow-y-auto space-y-6 flex-1 text-zinc-900">
           {!currentUser ? (
             /* 1. UNAUTHENTICATED STATE PROMPT */
-            <div className="text-center py-8 space-y-4">
-              <div className="mx-auto w-16 h-16 bg-red-50 rounded-[1.5rem] flex items-center justify-center text-red-600 border border-red-100">
-                <ShieldCheck className="w-8 h-8 animate-pulse" />
-              </div>
-              <div>
-                <h3 className="text-lg font-black tracking-tight text-zinc-950">
-                  {isRtl ? 'تسجيل دخول سريع وآمن بجوجل' : 'Quick & Secure Google Login'}
-                </h3>
-                <p className="text-xs text-zinc-500 max-w-sm mx-auto mt-1 leading-relaxed">
+            <div className="py-2 space-y-6">
+              
+              {/* Option A: Fast 1-Click Phone/Name Login */}
+              <div className="bg-zinc-50 border border-zinc-200 p-5 rounded-2xl text-right">
+                <h4 className="text-sm font-black text-red-650 text-red-600 flex items-center gap-1.5 justify-end">
+                  <span>{isRtl ? 'تسجيل دخول سريع وثوري بـ ثانية واحدة ⚡' : 'Instant 1-Second Speed Login ⚡'}</span>
+                </h4>
+                <p className="text-[11px] text-zinc-500 mt-1 mb-4 leading-relaxed">
                   {isRtl 
-                    ? 'سجل دخولك لحفظ بياناتك وعنوانك البريدي لتوصيل سريع والتتبع الحي لخطوات طبخ وقرمشة طلباتك!' 
-                    : 'Log in to save contact info and track real-time kitchen status of your orders!'}
+                    ? 'اكتب اسمك وهاتفك للتسجيل فوراً وتتبع أكيلك مباشرة بدون باسورد وبدون أي تأخير!' 
+                    : 'Enter your name & phone to register instantly and track your food without password delays!'}
                 </p>
+
+                <form onSubmit={handleAnonymousSignIn} className="space-y-3.5">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-right">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'الاسم الكامل:' : 'Your Name:'}</label>
+                      <div className="relative">
+                        <input
+                          type="text"
+                          required
+                          value={fastLoginName}
+                          onChange={(e) => setFastLoginName(e.target.value)}
+                          placeholder={isRtl ? 'اكتب اسمك هنا...' : 'Enter your name...'}
+                          className="w-full text-right pr-3 pl-3 py-2.5 border border-zinc-300 rounded-xl bg-white text-xs font-bold outline-none focus:border-red-600"
+                        />
+                      </div>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'رقم الهاتف (١١ رقم):' : 'Phone (11 digits):'}</label>
+                      <div className="relative">
+                        <input
+                          type="tel"
+                          required
+                          maxLength={11}
+                          value={fastLoginPhone}
+                          onChange={(e) => setFastLoginPhone(e.target.value)}
+                          placeholder="01xxxxxxxxx"
+                          className="w-full text-right pr-3 pl-3 py-2.5 border border-zinc-300 rounded-xl bg-white text-xs font-bold outline-none focus:border-red-600 text-left font-mono"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {fastLoginError && (
+                    <p className="text-right text-[11px] font-bold text-red-600 animate-pulse">{fastLoginError}</p>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={isLoadingProfile}
+                    className="w-full py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs sm:text-sm flex items-center justify-center gap-1.5 shadow-md active:scale-98 transition duration-150 cursor-pointer border border-red-700"
+                  >
+                    {isLoadingProfile ? (
+                      <span className="animate-pulse">{isRtl ? 'جاري الدخول السريع...' : 'Logging in fast...'}</span>
+                    ) : (
+                      <>
+                        <span>{isRtl ? 'دخول فوري كأكيل متميز ⚡' : 'Instant Login & Order ⚡'}</span>
+                      </>
+                    )}
+                  </button>
+                </form>
               </div>
 
-              <button
-                type="button"
-                onClick={handleGoogleSignIn}
-                className="mx-auto px-6 py-3 bg-red-600 hover:bg-red-700 text-white rounded-xl font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-md active:scale-95 transition cursor-pointer border border-red-700"
-              >
-                {/* Custom Google SVG icon */}
-                <svg className="w-4 h-4 fill-current" viewBox="0 0 24 24">
-                  <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.25.61 4.46 1.64l2.484-2.483C17.4 1.7 14.97 1 12.24 1 6.58 1 2 5.58 2 11.24s4.58 10.24 10.24 10.24c5.9 0 10.13-4.14 10.13-10.13 0-.68-.08-1.35-.22-1.99H12.24z"/>
-                </svg>
-                <span>{isRtl ? 'سجل دخول باستخدام Google' : 'Sign in with Google'}</span>
-              </button>
+              {/* Separator line */}
+              <div className="relative flex items-center justify-center py-2">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-zinc-200"></div>
+                </div>
+                <span className="relative px-3 bg-white text-xs font-bold text-zinc-450 text-zinc-400">{isRtl ? 'أو سجل بحساب جوجل' : 'OR SIGN IN WITH GOOGLE'}</span>
+              </div>
+
+              {/* Option B: Standard Google Social Login */}
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={handleGoogleSignIn}
+                  className="mx-auto px-6 py-3 bg-zinc-950 hover:bg-zinc-850 text-white rounded-xl font-black text-xs sm:text-sm flex items-center gap-2.5 shadow-md active:scale-95 transition cursor-pointer border border-zinc-900"
+                >
+                  {/* Google SVG icon */}
+                  <svg className="w-4 h-4 fill-white" viewBox="0 0 24 24">
+                    <path d="M12.24 10.285V13.4h6.887C18.2 15.614 15.645 18 12.24 18c-3.86 0-7-3.14-7-7s3.14-7 7-7c1.7 0 3.25.61 4.46 1.64l2.484-2.483C17.4 1.7 14.97 1 12.24 1 6.58 1 2 5.58 2 11.24s4.58 10.24 10.24 10.24c5.9 0 10.13-4.14 10.13-10.13 0-.68-.08-1.35-.22-1.99H12.24z"/>
+                  </svg>
+                  <span>{isRtl ? 'تسجيل دخول سريع بواسطة Google' : 'Log in with Google Account'}</span>
+                </button>
+              </div>
             </div>
           ) : (
             /* 2. AUTHENTICATED USER DASHBOARD */

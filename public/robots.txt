@@ -1,0 +1,12 @@
+# robots.txt for Hummer Restaurant / مطعم هامر
+User-agent: *
+Allow: /
+Allow: /assets/
+Allow: /logo.png
+Allow: /favicon.ico
+
+# Disallow administrative dashboard from search listing to keep it secure
+Disallow: /admin
+Disallow: /admin/*
+
+Sitemap: https://hummer-pro.vercel.app/sitemap.xml
