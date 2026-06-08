@@ -96,25 +96,25 @@ export default function Header({
   return (
     <header className={`sticky top-0 z-40 w-full bg-white/95 backdrop-blur-md border-b border-zinc-200 shadow-sm transition-transform duration-300 ease-in-out ${isVisible ? 'translate-y-0' : '-translate-y-full'}`}>
       {/* Dynamic Promo Banner - Simplified and Centered to avoid extreme width clutter */}
-      <div className="bg-red-600 py-2.5 text-center text-xs font-black text-white px-4 relative shadow-inner">
-        <div className="max-w-7xl mx-auto flex items-center justify-center gap-2 flex-wrap">
-          <Flame className="w-4 h-4 text-amber-400 animate-pulse fill-amber-350 shrink-0" />
+      <div className="bg-red-600 py-1.5 text-center text-[11px] font-black text-white px-4 relative shadow-inner">
+        <div className="max-w-7xl mx-auto flex items-center justify-center gap-1.5 flex-wrap">
+          <Flame className="w-3.5 h-3.5 text-amber-400 animate-pulse fill-amber-350 shrink-0" />
           <span className="tracking-wide">
             {isRtl 
               ? (siteSettings?.promoBannerAr || 'عروض الصيف من هامر! خصم ١٠٪ على كل الكريبات بـ كود HUMMER10')
               : (siteSettings?.promoBannerEn || 'Summer Deals! 10% OFF all crepes with code HUMMER10')}
           </span>
-          <span className="hidden sm:inline-block h-1.5 w-1.5 rounded-full bg-white/70"></span>
-          <span className="hidden sm:flex items-center gap-1.5 bg-red-700/80 px-2 py-0.5 rounded-md text-[10px] font-extrabold border border-red-500">
-            <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
+          <span className="hidden sm:inline-block h-1 w-1 rounded-full bg-white/70"></span>
+          <span className="hidden sm:flex items-center gap-1 bg-red-700/80 px-1.5 py-0.5 rounded text-[9px] font-extrabold border border-red-500">
+            <Sparkles className="w-3 h-3 text-amber-300 animate-bounce" />
             {isRtl ? 'عجلة الحظ هامر لايف!' : 'Hummer Wheel Live!'}
           </span>
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between">
         {/* Logo and Tagline matching layout with freshly generated branding logo */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2.5">
           <div className="relative shrink-0">
             <motion.img 
               whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.05 }}
@@ -122,17 +122,17 @@ export default function Header({
               src={siteSettings?.logoUrl || defaultLogo}
               alt="Hummer Brand Logo"
               referrerPolicy="no-referrer"
-              className="w-12 h-12 rounded-2xl object-cover bg-zinc-950 shadow-md cursor-pointer"
+              className="w-10 h-10 rounded-xl object-cover bg-zinc-950 shadow-md cursor-pointer"
             />
           </div>
           <div>
-            <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tighter flex items-center gap-1 font-sans">
+            <h1 className="text-base sm:text-lg font-black text-zinc-900 tracking-tighter flex items-center gap-1 font-sans leading-none">
               {isRtl ? 'مطعم هامر' : 'Hummer Restaurant'}
-              <span className="text-red-700 text-[10px] font-black animate-pulse px-2 py-0.5 bg-red-50 rounded-md border border-red-200 tracking-wider">
+              <span className="text-red-700 text-[8.5px] font-black animate-pulse px-1.5 py-0.2 bg-red-50 rounded border border-red-200 tracking-wider">
                 CRISPY
               </span>
             </h1>
-            <p className="text-[10px] text-zinc-400 font-bold uppercase tracking-wide">
+            <p className="text-[9px] text-zinc-400 font-bold uppercase tracking-wide mt-0.5">
               {isRtl ? 'ملك الكريبات وأقوى فرخة وبطاطس مقرمشة' : 'King of Crepes & Best Crispy Chicken'}
             </p>
           </div>

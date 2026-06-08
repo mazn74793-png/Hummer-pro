@@ -27,6 +27,20 @@ service cloud.firestore {
       allow read, write: if isOwner(userId) || isAdmin();
     }
 
+    // Settings, Menu, and Branches Collections (Public Read, Admin Write)
+    match /settings/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /menu/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    match /branches/{docId} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     // Riders Collection
     match /riders/{riderId} {
       allow read, write: if isAdmin();

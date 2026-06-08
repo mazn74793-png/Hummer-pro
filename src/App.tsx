@@ -222,6 +222,55 @@ export default function App() {
       }
     }
 
+    // 3. Real-time global site settings listener (visible to everyone)
+    const unsubGlobalSettings = onSnapshot(
+      doc(db, 'settings', 'global'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const remoteSettings = snapshot.data() as SiteSettings;
+          setSiteSettings(prev => ({ ...prev, ...remoteSettings }));
+        }
+      },
+      (err) => {
+        console.error("Error syncing global settings:", err);
+      }
+    );
+    unsubscribers.push(unsubGlobalSettings);
+
+    // 4. Real-time global menu items listener (visible to everyone)
+    const unsubGlobalMenu = onSnapshot(
+      doc(db, 'menu', 'global'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          if (data && Array.isArray(data.items)) {
+            setMenuItems(data.items);
+          }
+        }
+      },
+      (err) => {
+        console.error("Error syncing global menu items:", err);
+      }
+    );
+    unsubscribers.push(unsubGlobalMenu);
+
+    // 5. Real-time global branches listener (visible to everyone)
+    const unsubGlobalBranches = onSnapshot(
+      doc(db, 'branches', 'global'),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const data = snapshot.data();
+          if (data && Array.isArray(data.items)) {
+            setBranches(data.items);
+          }
+        }
+      },
+      (err) => {
+        console.error("Error syncing global branches:", err);
+      }
+    );
+    unsubscribers.push(unsubGlobalBranches);
+
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
@@ -378,9 +427,15 @@ export default function App() {
     }
   };
 
-  const handleUpdateMenuItems = (newItems: MenuItem[]) => {
+  const handleUpdateMenuItems = async (newItems: MenuItem[]) => {
     setMenuItems(newItems);
     localStorage.setItem('hummer_menu_items', JSON.stringify(newItems));
+
+    try {
+      await setDoc(doc(db, 'menu', 'global'), { items: newItems });
+    } catch (err) {
+      console.error("Failed saving menu items to Firestore:", err);
+    }
 
     const channel = new BroadcastChannel('hummer_orders_sync');
     channel.postMessage({ type: 'UPDATE_MENU', menuItems: newItems });
@@ -425,14 +480,26 @@ export default function App() {
       }
     }
 
+    try {
+      await setDoc(doc(db, 'settings', 'global'), settingsToSave);
+    } catch (err) {
+      console.error("Failed saving site settings to Firestore:", err);
+    }
+
     const channel = new BroadcastChannel('hummer_orders_sync');
     channel.postMessage({ type: 'UPDATE_SETTINGS', siteSettings: newSettings });
     channel.close();
   };
 
-  const handleUpdateBranches = (newBranches: Branch[]) => {
+  const handleUpdateBranches = async (newBranches: Branch[]) => {
     setBranches(newBranches);
     localStorage.setItem('hummer_branches', JSON.stringify(newBranches));
+
+    try {
+      await setDoc(doc(db, 'branches', 'global'), { items: newBranches });
+    } catch (err) {
+      console.error("Failed saving branches to Firestore:", err);
+    }
 
     const channel = new BroadcastChannel('hummer_orders_sync');
     channel.postMessage({ type: 'UPDATE_BRANCHES', branches: newBranches });
