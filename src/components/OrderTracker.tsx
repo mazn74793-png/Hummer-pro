@@ -14,7 +14,7 @@ const STEPS: { status: OrderStep; labelAr: string; labelEn: string; descAr: stri
     status: 'received',
     labelAr: 'تم استلام الطلب',
     labelEn: 'Order Received',
-    descAr: 'مطبخ همر سجل طلبك وبدأ في تجهيز المقادير الطازة ونخل دقيق القرمشة.',
+    descAr: 'مطبخ هامر سجل طلبك وبدأ في تجهيز المقادير الطازة ونخل دقيق القرمشة.',
     descEn: 'Our terminal registered your request and is sorting fresh local seasonings.',
     icon: CheckCircle
   },
@@ -22,7 +22,7 @@ const STEPS: { status: OrderStep; labelAr: string; labelEn: string; descAr: stri
     status: 'cooking',
     labelAr: 'القلي الناري الجبار',
     labelEn: 'Bubbling Frying Lab',
-    descAr: 'فراخ الكريسبي حالياً في زيت القرمشة المغلي مع توابل همر، وصاج الكريب سخن جداً.',
+    descAr: 'فراخ الكريسبي حالياً في زيت القرمشة المغلي مع توابل هامر، وصاج الكريب سخن جداً.',
     descEn: 'Crunchy chicken pieces are sizzling on the grill, and crepes are being flipped.',
     icon: ChefHat
   },
@@ -105,7 +105,7 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
           </button>
           <div className="flex items-center gap-2">
             <span className="text-sm font-black tracking-wide">
-              {isRtl ? 'بث مباشر لتجهيز طلب همر الخاص بك' : 'LIVE HUMMER ORDER RADER'}
+              {isRtl ? 'بث مباشر لتجهيز طلب هامر الخاص بك' : 'LIVE HUMMER ORDER RADER'}
             </span>
             <Clock className="w-5 h-5 text-yellow-300 animate-pulse animate-bounce" />
           </div>
@@ -254,7 +254,7 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
                   )}
                   <div className="flex justify-between">
                     <span className="font-mono text-zinc-900 font-black">+{order.deliveryFee} ج.م</span>
-                    <span>{isRtl ? 'توصيل همر الصاروخي:' : 'Sonic Delivery Fee:'}</span>
+                    <span>{isRtl ? 'توصيل هامر الصاروخي:' : 'Sonic Delivery Fee:'}</span>
                   </div>
                   
                   <div className="flex justify-between text-sm text-red-600 font-black pt-1.5 border-t border-zinc-200">
@@ -282,6 +282,23 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
                 </div>
               </div>
             )}
+          </div>
+
+          {/* WhatsApp direct customer helpline */}
+          <div className="flex justify-center">
+            <a
+              href={`https://wa.me/201026040846?text=${encodeURIComponent(
+                isRtl 
+                  ? `أهلاً يا فندم، أبقى مستفسر بخصوص طلبي من مطعم هامر ورقم الأوردر بتاعي هو: ${order.id}` 
+                  : `Hello, I would like to inquire about my order from Hummer. Order Reference ID: ${order.id}`
+              )}`}
+              target="_blank"
+              rel="noreferrer"
+              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black transition-all flex items-center justify-center gap-2 cursor-pointer shadow border border-green-700 active:scale-95 text-center leading-none"
+            >
+              <span className="w-2 h-2 rounded-full bg-white animate-pulse" />
+              <span>{isRtl ? 'تحتاج مساعدة بخصوص طلبك؟ اسأل الكاشير على واتساب 💬' : 'Need live order support? Chat on WhatsApp 💬'}</span>
+            </a>
           </div>
 
           <div className="flex flex-col sm:flex-row gap-2 pt-2">

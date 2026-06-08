@@ -100,7 +100,7 @@ export default function LuckyWheel({ onApplyGiftCode, lang, onClose }: LuckyWhee
           <div className="flex items-center gap-1.5 text-right font-sans">
             <Gift className="w-5 h-5 text-red-600 animate-pulse" />
             <h3 className="font-sans font-black text-zinc-950 text-base">
-              {isRtl ? 'عجلة حظ مطعم همر 🎡' : 'Hummer Wheel of Fortune 🎡'}
+              {isRtl ? 'عجلة حظ مطعم هامر 🎡' : 'Hummer Wheel of Fortune 🎡'}
             </h3>
           </div>
         </div>
@@ -108,7 +108,7 @@ export default function LuckyWheel({ onApplyGiftCode, lang, onClose }: LuckyWhee
         {/* Intro */}
         <p className="text-zinc-500 text-xs font-bold mb-6">
           {isRtl
-            ? 'محتار تاكل إيه وعايز هدية؟ دير عجلة الحظ همر الحصرية، المطبخ محضرلك هدايا فتاكة تضاف لسلة طلباتك فوراً!'
+            ? 'محتار تاكل إيه وعايز هدية؟ دير عجلة الحظ هامر الحصرية، المطبخ محضرلك هدايا فتاكة تضاف لسلة طلباتك فوراً!'
             : 'Confused what to order? Roll the premium Hummer Wheel. The Chef has prepared exciting rewards added directly to your active cart!'}
         </p>
 
@@ -179,7 +179,7 @@ export default function LuckyWheel({ onApplyGiftCode, lang, onClose }: LuckyWhee
 
             {/* Core center node */}
             <div className="absolute inset-x-0 inset-y-0 m-auto w-10 h-10 bg-white rounded-full border-4 border-zinc-950 shadow-sm flex items-center justify-center font-display font-black text-zinc-950 text-[10px] z-10 select-none">
-              همر
+              هامر
             </div>
           </motion.div>
         </div>
@@ -216,7 +216,7 @@ export default function LuckyWheel({ onApplyGiftCode, lang, onClose }: LuckyWhee
                 animate={{ opacity: 1, y: 0 }}
                 className="p-4 bg-red-50 border border-red-250 border-red-200 rounded-2xl space-y-3 font-sans text-xs text-right"
               >
-                <p className="text-red-700 font-black">{isRtl ? 'مبارك! كسبت مع همر:' : 'Congrats! You won:'}</p>
+                <p className="text-red-700 font-black">{isRtl ? 'مبارك! كسبت مع هامر:' : 'Congrats! You won:'}</p>
                 <p className="text-base font-extrabold text-[#b45309]">
                   {isRtl ? wonPrize.textAr : wonPrize.textEn}
                 </p>
@@ -237,7 +237,7 @@ export default function LuckyWheel({ onApplyGiftCode, lang, onClose }: LuckyWhee
                 ) : (
                   <p className="text-zinc-500 text-[11px] block mt-1 leading-relaxed">
                     {isRtl
-                      ? 'لا بأس في اللقمة القادمة! يمكنك طلب كريب سوبر همر المقرمش الآن كونه لا يعوض!'
+                      ? 'لا بأس في اللقمة القادمة! يمكنك طلب كريب سوبر هامر المقرمش الآن كونه لا يعوض!'
                       : 'Never mind, food makes everything better! Try our legendary Super Hummer Crepe.'}
                   </p>
                 )}

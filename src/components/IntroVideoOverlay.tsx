@@ -23,13 +23,8 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
       return;
     }
 
-    // 2. Check localStorage to enforce FIRST TIME ONLY
-    const hasPlayed = localStorage.getItem('hummer_intro_played_v1');
-    if (hasPlayed === 'true') {
-      setShouldShow(false);
-    } else {
-      setShouldShow(true);
-    }
+    // Always show on page load (satisfying "يظهر كل ما اعمل ريفريش")
+    setShouldShow(true);
   }, [siteSettings]);
 
   // Attempt to autoplay when shouldShow updates
@@ -56,11 +51,11 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
   }, [shouldShow]);
 
   const handleSkip = () => {
-    localStorage.setItem('hummer_intro_played_v1', 'true');
     setShouldShow(false);
   };
 
-  const toggleMute = () => {
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation(); // prevent skipping when toggling mute
     if (videoRef.current) {
       videoRef.current.muted = !videoRef.current.muted;
       setIsMuted(videoRef.current.muted);
@@ -89,7 +84,8 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
             muted={isMuted}
             playsInline
             onEnded={handleSkip}
-            className="w-full h-full object-cover sm:object-contain select-none max-h-screen"
+            onClick={handleSkip}
+            className="w-full h-full object-cover sm:object-contain select-none max-h-screen cursor-pointer"
             id="intro-cinematic-video-element"
           />
 
@@ -97,40 +93,28 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
           <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-20">
             {/* Direct Skip Button (tactile & high-contrast red/dark accent) */}
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={handleSkip}
-              className="px-5 py-2.5 bg-red-600 hover:bg-red-750 text-white font-black text-xs uppercase tracking-wider rounded-xl border border-red-700 shadow-lg transition flex items-center gap-1.5 cursor-pointer"
+              className="p-3 bg-red-600 hover:bg-red-750 text-white rounded-full border border-red-700 shadow-lg transition flex items-center justify-center cursor-pointer"
+              title={isRtl ? 'تخطي' : 'Skip'}
             >
-              <span>{isRtl ? 'تخطي الفيديو' : 'Skip Intro'}</span>
-              <X className="w-4 h-4" />
+              <X className="w-5 h-5 font-bold" />
             </motion.button>
 
             {/* Mute/Unmute Indicator */}
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
               onClick={toggleMute}
-              className="p-3 bg-zinc-900/80 hover:bg-zinc-800 text-white border border-zinc-700/50 rounded-xl shadow-lg transition flex items-center justify-center cursor-pointer"
+              className="p-3 bg-zinc-900/80 hover:bg-zinc-800 text-white border border-zinc-700/50 rounded-full shadow-lg transition flex items-center justify-center cursor-pointer"
             >
               {isMuted ? (
-                <VolumeX className="w-4 h-4 text-zinc-400" />
+                <VolumeX className="w-5 h-5 text-zinc-400" />
               ) : (
-                <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+                <Volume2 className="w-5 h-5 text-emerald-400 animate-pulse" />
               )}
             </motion.button>
-          </div>
-
-          {/* Bottom Branding Badge */}
-          <div className="absolute bottom-10 left-6 right-6 text-center z-10 pointer-events-none">
-            <div className="max-w-xs mx-auto bg-black/50 backdrop-blur-md p-3.5 rounded-2xl border border-zinc-805 border-zinc-700/30">
-              <span className="text-[10px] font-black tracking-widest text-red-500 uppercase block mb-1">
-                {isRtl ? 'مطعم همر الأصلي' : 'Hummer Restaurant'}
-              </span>
-              <h4 className="text-white text-xs font-black">
-                {isRtl ? 'استمتع بأقوى تجربة طعام كرسبي في مصر' : 'Get Ready for the Crispy Legends'}
-              </h4>
-            </div>
           </div>
         </div>
       </motion.div>

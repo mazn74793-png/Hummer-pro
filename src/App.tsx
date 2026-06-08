@@ -20,6 +20,12 @@ import AdminDashboard from './components/AdminDashboard';
 import IntroVideoOverlay from './components/IntroVideoOverlay';
 import { saveLargeAsset, getLargeAsset, deleteLargeAsset } from './utils/indexedDB';
 
+// Firebase Integrators
+import { auth, db } from './firebase';
+import { onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { collection, onSnapshot, doc, getDoc, setDoc, addDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
+import UserProfileModal from './components/UserProfileModal';
+
 // Types
 import { MenuItem, CartItem, OrderState, SizeOption, OrderStep, Branch, SiteSettings } from './types';
 
@@ -27,11 +33,11 @@ import { MenuItem, CartItem, OrderState, SizeOption, OrderStep, Branch, SiteSett
 import { MENU_ITEMS, HUMMER_BRANCHES } from './menuData';
 
 const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  heroTitleAr: 'كريب وقرمشة\nملوك همر!',
+  heroTitleAr: 'كريب وقرمشة\nملوك هامر!',
   heroTitleEn: "Crunch\nThe King",
   heroSubAr: 'أقوى كريبات ووجبات فراخ بروستد كريسبي نارية بالبهارات السحرية والجبنة السايحة المحضرة طازجة فور طلبك!',
   heroSubEn: 'The most powerful fried chicken and folded crepes in the city. Sizzling hot, freshly pressed, and made daily.',
-  heroBadgeAr: 'همر الأصلي دايماً يكسب 🏆',
+  heroBadgeAr: 'هامر الأصلي دايماً يكسب 🏆',
   heroBadgeEn: 'Original Hummer Taste 🏆',
   deliveryTimeAr: '٣٥ دقيقة',
   deliveryTimeEn: '35 MIN',
@@ -42,9 +48,9 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   addressSummaryEn: 'Road 9, Maadi | Abbas Akkad St, Cairo',
   deliveryNoticeAr: 'ملاحظة: خدمة الدليفري والتوصيل تعمل على مدار الساعة طوال أيام الأسبوع حتى الساعة الرابعة فجراً في أي طقس!',
   deliveryNoticeEn: 'Notice: Delivery service and takeout runs 24/7 in extreme weather conditions until 04:00 AM!',
-  footerDescAr: 'موقع مطاعم همر الرسمي لكافة كريبات مصر الشهيرة، فراخ بروستد كريسبي على أصولها، تتبيلة سحرية لا غنى عنها!',
+  footerDescAr: 'موقع مطاعم هامر الرسمي لكافة كريبات مصر الشهيرة، فراخ بروستد كريسبي على أصولها، تتبيلة سحرية لا غنى عنها!',
   footerDescEn: 'The official platform of Hummer restaurant. Firing standard crunchy meals, savory folded street crepes, and elite appetizers across Cairo and Giza.',
-  promoBannerAr: 'عروض الصيف من همر! خصم ١٠٪ على كل الكريبات بـ كود HUMMER10',
+  promoBannerAr: 'عروض الصيف من هامر! خصم ١٠٪ على كل الكريبات بـ كود HUMMER10',
   promoBannerEn: 'Summer Deals! 10% OFF all crepes with code HUMMER10',
   introVideoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41611-large.mp4',
   disableIntro: false,
@@ -57,6 +63,11 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isWheelOpen, setIsWheelOpen] = useState<boolean>(false);
   const [chosenCouponCode, setChosenCouponCode] = useState<string>('');
+  
+  // User Profile & Rider database states
+  const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(auth.currentUser);
+  const [riders, setRiders] = useState<any[]>([]);
   
   // Admin states
   const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
@@ -118,6 +129,103 @@ export default function App() {
 
   // Active Simulated tracker order
   const [activeOrder, setActiveOrder] = useState<OrderState | null>(null);
+
+  // Set up real-time Firebase Auth listener
+  useEffect(() => {
+    const unsubAuth = onAuthStateChanged(auth, (usr) => {
+      setCurrentUser(usr);
+    });
+    return unsubAuth;
+  }, []);
+
+  // Set up context-aware real-time Firestore database listeners
+  useEffect(() => {
+    const unsubscribers: (() => void)[] = [];
+
+    const isAdmin = isAdminOpen || currentUser?.email === 'motaem23y@gmail.com';
+
+    if (isAdmin) {
+      // 1. Admin reads all riders with secure error handling
+      const unsubRiders = onSnapshot(
+        collection(db, 'riders'),
+        (snapshot) => {
+          const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+          setRiders(list);
+        },
+        (err) => {
+          console.error("Error syncing riders collection for admin:", err);
+        }
+      );
+      unsubscribers.push(unsubRiders);
+
+      // 2. Admin reads all orders with secure error handling
+      const unsubOrders = onSnapshot(
+        collection(db, 'orders'),
+        (snapshot) => {
+          const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+          list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+          setOrders(list);
+
+          // Update active order if visible
+          if (activeOrder) {
+            const matching = list.find(o => o.id === activeOrder.id);
+            if (matching) {
+              setActiveOrder(matching);
+            }
+          }
+        },
+        (err) => {
+          console.error("Error syncing orders collection for admin:", err);
+        }
+      );
+      unsubscribers.push(unsubOrders);
+
+    } else {
+      // Non-admin flow: Only listen to the user's own orders if they are logged in
+      if (currentUser) {
+        const q = query(collection(db, 'orders'), where('userId', '==', currentUser.uid));
+        const unsubUserOrders = onSnapshot(
+          q,
+          (snapshot) => {
+            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+            setOrders(list);
+
+            if (activeOrder) {
+              const matching = list.find(o => o.id === activeOrder.id);
+              if (matching) {
+                setActiveOrder(matching);
+              }
+            }
+          },
+          (err) => {
+            console.error("Error syncing user's orders:", err);
+          }
+        );
+        unsubscribers.push(unsubUserOrders);
+      }
+
+      // Guest or logged-in active tracked order single document listener
+      if (activeOrder && activeOrder.id) {
+        const unsubActive = onSnapshot(
+          doc(db, 'orders', activeOrder.id),
+          (snapshot) => {
+            if (snapshot.exists()) {
+              setActiveOrder({ id: snapshot.id, ...snapshot.data() } as any);
+            }
+          },
+          (err) => {
+            console.error("Error syncing tracking details for active order:", err);
+          }
+        );
+        unsubscribers.push(unsubActive);
+      }
+    }
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [currentUser, activeOrder?.id, isAdminOpen]);
 
   // Sync state modifications live across tabs/views using standard BroadcastChannel
   useEffect(() => {
@@ -196,42 +304,78 @@ export default function App() {
     resolveLargeAssetReferences();
   }, []);
 
-  const handleUpdateOrderStatus = (orderId: string, nextStatus: OrderStep) => {
-    const updated = orders.map(order => {
-      if (order.id === orderId) {
-        const orderUpdated = { ...order, status: nextStatus };
-        if (activeOrder && activeOrder.id === orderId) {
-          setActiveOrder(orderUpdated);
-        }
-        return orderUpdated;
+  const handleUpdateOrderStatus = async (orderId: string, nextStatus: OrderStep) => {
+    try {
+      await updateDoc(doc(db, 'orders', orderId), { status: nextStatus });
+    } catch (err) {
+      console.error('Error updating order status in Firestore:', err);
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    try {
+      await deleteDoc(doc(db, 'orders', orderId));
+    } catch (err) {
+      console.error('Error deleting order from Firestore:', err);
+    }
+  };
+
+  const handleClearAllOrders = async () => {
+    try {
+      for (const order of orders) {
+        await deleteDoc(doc(db, 'orders', order.id));
       }
-      return order;
-    });
-    setOrders(updated);
-    localStorage.setItem('hummer_orders_list', JSON.stringify(updated));
-
-    const channel = new BroadcastChannel('hummer_orders_sync');
-    channel.postMessage({ type: 'UPDATE_ORDERS', orders: updated });
-    channel.close();
+    } catch (err) {
+      console.error('Error clearing all orders:', err);
+    }
   };
 
-  const handleDeleteOrder = (orderId: string) => {
-    const updated = orders.filter(order => order.id !== orderId);
-    setOrders(updated);
-    localStorage.setItem('hummer_orders_list', JSON.stringify(updated));
-
-    const channel = new BroadcastChannel('hummer_orders_sync');
-    channel.postMessage({ type: 'UPDATE_ORDERS', orders: updated });
-    channel.close();
+  // Rider logistics crew CRUD handlers for Firestore database
+  const handleAddRider = async (name: string, phone: string) => {
+    try {
+      await addDoc(collection(db, 'riders'), {
+        name,
+        phone,
+        status: 'here',
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error adding rider to Firestore:', err);
+    }
   };
 
-  const handleClearAllOrders = () => {
-    setOrders([]);
-    localStorage.setItem('hummer_orders_list', JSON.stringify([]));
+  const handleDeleteRider = async (id: string) => {
+    try {
+      await deleteDoc(doc(db, 'riders', id));
+    } catch (err) {
+      console.error('Error deleting rider from Firestore:', err);
+    }
+  };
 
-    const channel = new BroadcastChannel('hummer_orders_sync');
-    channel.postMessage({ type: 'UPDATE_ORDERS', orders: [] });
-    channel.close();
+  const handleUpdateRiderStatus = async (id: string, status: 'here' | 'out') => {
+    try {
+      await updateDoc(doc(db, 'riders', id), { status });
+    } catch (err) {
+      console.error('Error updating rider status in Firestore:', err);
+    }
+  };
+
+  const handleAssignRiderToOrder = async (orderId: string, riderId: string) => {
+    try {
+      const selected = riders.find(r => r.id === riderId);
+      if (selected) {
+        await updateDoc(doc(db, 'orders', orderId), {
+          riderId,
+          riderName: selected.name,
+          riderPhone: selected.phone,
+          captainName: selected.name // fallback for system
+        });
+        // Set the rider status to out deliveries
+        await updateDoc(doc(db, 'riders', riderId), { status: 'out' });
+      }
+    } catch (err) {
+      console.error('Error assigning rider to order:', err);
+    }
   };
 
   const handleUpdateMenuItems = (newItems: MenuItem[]) => {
@@ -417,7 +561,7 @@ export default function App() {
   };
 
   // 6. Handle successful checkout order placing
-  const handleCheckout = (orderDetails: {
+  const handleCheckout = async (orderDetails: {
     customerName: string;
     phone: string;
     deliveryAddress: string;
@@ -440,8 +584,9 @@ export default function App() {
     const captainsList = ['أبو حميد الطيار', 'أبو كرم الجريء', 'عمر الدليفري', 'سيد الدراج المجهول'];
     const captainName = captainsList[Math.floor(Math.random() * captainsList.length)];
 
+    const docId = `HMR-${Math.floor(Math.random() * 90000 + 10000)}`;
     const placedOrder: OrderState = {
-      id: `HMR-${Math.floor(Math.random() * 90000 + 10000)}`,
+      id: docId,
       customerName: orderDetails.customerName,
       phone: orderDetails.phone,
       deliveryAddress: orderDetails.deliveryAddress,
@@ -451,22 +596,25 @@ export default function App() {
       deliveryFee,
       totalPrice: Math.round(finalPrice),
       status: 'received',
-      createdAt: new Date().toLocaleTimeString(),
+      createdAt: new Date().toISOString(),
       estimatedMinutes: Math.floor(Math.random() * 10 + 35), // 35 - 45 mins
-      captainName
+      captainName,
+      userId: currentUser?.uid || 'guest'
     };
 
     setActiveOrder(placedOrder);
     
-    // Save to live orders list
-    const updatedOrdersList = [placedOrder, ...orders];
-    setOrders(updatedOrdersList);
-    localStorage.setItem('hummer_orders_list', JSON.stringify(updatedOrdersList));
-
-    // Send instant update message
-    const channel = new BroadcastChannel('hummer_orders_sync');
-    channel.postMessage({ type: 'UPDATE_ORDERS', orders: updatedOrdersList });
-    channel.close();
+    // Write directly to our relational-structured persistent Firestore database
+    try {
+      await setDoc(doc(db, 'orders', docId), {
+        ...placedOrder,
+        riderId: '',
+        riderName: '',
+        riderPhone: ''
+      });
+    } catch (err) {
+      console.error('Error saving order to Firestore:', err);
+    }
 
     saveCart([]); // Empty active cart upon ordering!
     setChosenCouponCode(''); // Clear applied coupon
@@ -507,6 +655,11 @@ export default function App() {
         onUpdateSiteSettings={handleUpdateSiteSettings}
         branches={branches}
         onUpdateBranches={handleUpdateBranches}
+        riders={riders}
+        onAddRider={handleAddRider}
+        onDeleteRider={handleDeleteRider}
+        onUpdateRiderStatus={handleUpdateRiderStatus}
+        onAssignRiderToOrder={handleAssignRiderToOrder}
       />
     );
   }
@@ -526,6 +679,7 @@ export default function App() {
         activeTab={activeTab}
         setActiveTab={setActiveTab}
         siteSettings={siteSettings}
+        onOpenProfile={() => setIsProfileOpen(true)}
       />
 
       {/* 2. Hero Presentation Banner */}
@@ -546,11 +700,11 @@ export default function App() {
               <span className="text-red-700 uppercase tracking-wide">{isRtl ? 'قائمة الطعام الحصرية - جرب قرمشتنا' : 'Our Delicious Crispy Masterpieces'}</span>
             </div>
             <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 font-sans tracking-tight">
-              {isRtl ? 'منيو همر لأقوى كريبات وفراخ كريسبي' : 'Hummer Grand Taste Menu'}
+              {isRtl ? 'منيو هامر لأقوى كريبات وفراخ كريسبي' : 'Hummer Grand Taste Menu'}
             </h2>
             <p className="text-zinc-500 text-xs sm:text-sm mt-2 leading-relaxed">
               {isRtl
-                ? 'استكشف الوجبات والكريبات والكومبو الأكثر طلباً بخلطة همر السرية المقلية والمحشوة بالجبن الموزاريلا السايح، طعم يستحق التجربة!'
+                ? 'استكشف الوجبات والكريبات والكومبو الأكثر طلباً بخلطة هامر السرية المقلية والمحشوة بالجبن الموزاريلا السايح، طعم يستحق التجربة!'
                 : 'Browse our signature handwired categories filled with gooey cheeses, thick chicken breast crispy strips, and icy refreshments custom-cooked just for you!'}
             </p>
           </div>
@@ -613,7 +767,7 @@ export default function App() {
                 {isRtl ? 'ملقناش وجبات مطابقة لبحثك!' : 'No dishes match criteria!'}
               </p>
               <p className="text-xs text-zinc-500 font-bold leading-relaxed">
-                {isRtl ? 'جرب البحث بكلمة أخري مثل "سوبر همر"، "كريسبي" أو "كريب".' : 'Try searching for other words like "Zinger", "Crepe" or "Loaded"'}
+                {isRtl ? 'جرب البحث بكلمة أخري مثل "سوبر هامر"، "كريسبي" أو "كريب".' : 'Try searching for other words like "Zinger", "Crepe" or "Loaded"'}
               </p>
               <button
                 onClick={() => {
@@ -628,7 +782,7 @@ export default function App() {
           ) : (
             <motion.div
               layout
-              className="grid grid-cols-2 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-6"
+              className="grid grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2.5 sm:gap-6"
             >
               <AnimatePresence mode="popLayout">
                 {filteredMenuItems.map((item) => (
@@ -710,12 +864,12 @@ export default function App() {
           {/* brand summary */}
           <div className="space-y-4 text-right">
             <h3 className="text-lg font-black text-white flex items-center gap-2 justify-end">
-              <span>{isRtl ? 'مطعم همر' : 'Hummer Restaurant'}</span>
+              <span>{isRtl ? 'مطعم هامر' : 'Hummer Restaurant'}</span>
               <span className="w-8 h-8 bg-red-600 rounded-xl flex items-center justify-center font-display text-white text-base">H</span>
             </h3>
             <p className="text-xs text-zinc-400 font-medium leading-relaxed">
               {isRtl 
-                ? (siteSettings?.footerDescAr || 'موقع مطاعم همر الرسمي لكافة كريبات مصر الشهيرة، فراخ بروستد كريسبي على أصولها، تتبيلة سحرية لا غنى عنها!') 
+                ? (siteSettings?.footerDescAr || 'موقع مطاعم هامر الرسمي لكافة كريبات مصر الشهيرة، فراخ بروستد كريسبي على أصولها، تتبيلة سحرية لا غنى عنها!') 
                 : (siteSettings?.footerDescEn || 'The official platform of Hummer restaurant. Firing standard crunchy meals, savory folded street crepes, and elite appetizers across Cairo and Giza.')}
             </p>
             <p className="text-[10px] text-zinc-550 text-zinc-500 font-extrabold select-none">
@@ -726,7 +880,7 @@ export default function App() {
               >
                 ©
               </span>{' '}
-              {new Date().getFullYear()} {isRtl ? 'همر الدولية للوجبات السريعة. جميع الحقوق حتمية.' : 'Hummer International Fast-Foods. All Rights Reserved.'}
+              {new Date().getFullYear()} {isRtl ? 'هامر الدولية للوجبات السريعة. جميع الحقوق حتمية.' : 'Hummer International Fast-Foods. All Rights Reserved.'}
             </p>
           </div>
 
@@ -754,7 +908,7 @@ export default function App() {
               </p>
               <p className="text-[10px] text-zinc-500 leading-relaxed font-bold">
                 {isRtl 
-                  ? 'طلبك يتم طباعته فورا وتوصيله في بوكسات همر الدبل الحافظة للبخار.' 
+                  ? 'طلبك يتم طباعته فورا وتوصيله في بوكسات هامر الدبل الحافظة للبخار.' 
                   : 'Orders dispatch instantly using double insulation thermal packaging.'}
               </p>
             </div>
@@ -764,7 +918,7 @@ export default function App() {
           <div className="space-y-2 text-right">
             <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">{isRtl ? 'تابع قرمشتنا:' : 'STAY TUNED WITH CRUNCH:'}</h4>
             <p className="text-xs text-zinc-400 font-bold leading-relaxed">
-              {isRtl ? 'انضم إلى مليون همر من أكيلية الكريبات لمتابعة أقوى مسابقاتنا السنوية وعروض الـ 1+1 المجانية!' : 'Follow our official media channels to grab daily codes.'}
+              {isRtl ? 'انضم إلى مليون هامر من أكيلية الكريبات لمتابعة أقوى مسابقاتنا السنوية وعروض الـ 1+1 المجانية!' : 'Follow our official media channels to grab daily codes.'}
             </p>
             <div className="flex gap-2 justify-end pt-1">
               {['Facebook', 'Instagram', 'TikTok'].map((sc) => (
@@ -794,7 +948,7 @@ export default function App() {
                   <Sparkles className="w-8 h-8 animate-pulse text-red-500" />
                 </div>
                 <h3 className="text-xl font-black tracking-tight text-white font-sans">
-                  {isRtl ? 'تسجيل دخول الإدارة همر 🛠️' : 'Hummer Admin Unlock'}
+                  {isRtl ? 'تسجيل دخول الإدارة هامر 🛠️' : 'Hummer Admin Unlock'}
                 </h3>
                 <p className="text-xs text-zinc-400 font-bold leading-relaxed">
                   {isRtl ? 'يرجى إدخال رمز الأمان السري للوصول إلى لوحة التحكم' : 'Please enter the authorization security key to proceed'}
@@ -872,6 +1026,18 @@ export default function App() {
           </div>
         )}
       </AnimatePresence>
+
+      {/* 5. User Profile Overlay Modal */}
+      <UserProfileModal
+        isOpen={isProfileOpen}
+        onClose={() => setIsProfileOpen(false)}
+        lang={lang}
+        userOrders={orders.filter(o => o.userId === currentUser?.uid)}
+        onTrackOrder={(order) => {
+          setActiveOrder(order);
+          setIsProfileOpen(false);
+        }}
+      />
     </div>
   );
 }

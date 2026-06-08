@@ -58,7 +58,7 @@ export interface Review {
   rating: number;
   comment: string;
   date: string;
-  badge: 'عاشق الكريبات' | 'ملك المقرمشات' | 'همر الأكيل' | 'زبون دائم';
+  badge: 'عاشق الكريبات' | 'ملك المقرمشات' | 'هامر الأكيل' | 'زبون دائم';
 }
 
 export type OrderStep = 'received' | 'cooking' | 'wrapping' | 'delivering' | 'completed';
@@ -77,6 +77,10 @@ export interface OrderState {
   createdAt: string;
   estimatedMinutes: number;
   captainName: string;
+  userId?: string;
+  riderId?: string;
+  riderName?: string;
+  riderPhone?: string;
 }
 
 export interface Branch {

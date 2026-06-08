@@ -1,28 +1,31 @@
 import { MenuItem } from './types';
+import heroImage from './assets/images/hummer_hero_banner_1780836656832.png';
+import friedChickenImage from './assets/images/menu_fried_chicken_1780836678062.png';
+import crepeImage from './assets/images/menu_crepe_1780836694487.png';
 
-// Let's use the actual generated paths
+// Let's use the actual generated paths via bundler imports
 export const IMAGES = {
-  hero: '/src/assets/images/hummer_hero_banner_1780836656832.png',
-  friedChicken: '/src/assets/images/menu_fried_chicken_1780836678062.png',
-  crepe: '/src/assets/images/menu_crepe_1780836694487.png'
+  hero: heroImage,
+  friedChicken: friedChickenImage,
+  crepe: crepeImage
 };
 
 export const MENU_ITEMS: MenuItem[] = [
   // --- CREPES CATEGORY ---
   {
     id: 'k-1',
-    nameAr: 'كريب سوبر همر الجبار',
+    nameAr: 'كريب سوبر هامر الجبار',
     nameEn: 'Super Hummer Mighty Crepe',
-    descriptionAr: 'قنبلة همر! كريب عملاق محشو بقطع الدجاج الكريسبي المقرمشة، ميكس جريل، فراخ بانيه، ميكس جبن موزاريلا وشيدر غرقانة بصوص همر السري.',
+    descriptionAr: 'قنبلة هامر! كريب عملاق محشو بقطع الدجاج الكريسبي المقرمشة، ميكس جريل، فراخ بانيه، ميكس جبن موزاريلا وشيدر غرقانة بصوص هامر السري.',
     descriptionEn: 'The Hummer Special! Packed to the brim with crispy chicken chunks, pane, mix of cheddar and mozzarella cheese, smothered in our secret Hummer sauce.',
     price: 135,
     image: IMAGES.crepe,
     category: 'crepes',
     spicyOption: true,
-    tags: ['الأكثر طلباً', 'توقيع همر'],
+    tags: ['الأكثر طلباً', 'توقيع هامر'],
     sizes: [
-      { id: 'sz-k1', nameAr: 'همر عادي', nameEn: 'Regular', extraPrice: 0 },
-      { id: 'sz-k2', nameAr: 'همر وحش (عملاق)', nameEn: 'Monster Size', extraPrice: 40 }
+      { id: 'sz-k1', nameAr: 'هامر عادي', nameEn: 'Regular', extraPrice: 0 },
+      { id: 'sz-k2', nameAr: 'هامر وحش (عملاق)', nameEn: 'Monster Size', extraPrice: 40 }
     ]
   },
   {
@@ -41,7 +44,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'k-3',
     nameAr: 'كريب شيش طاووق مميز',
     nameEn: 'Premium Shish Tawook Crepe',
-    descriptionAr: 'شيش طاووق مشوي على الجريل بتتبيلة همر التركية، فلفل ألوان، زيتون أسود، موزاريلا وصوص الثومية الفاخر.',
+    descriptionAr: 'شيش طاووق مشوي على الجريل بتتبيلة هامر التركية، فلفل ألوان، زيتون أسود، موزاريلا وصوص الثومية الفاخر.',
     descriptionEn: 'Flame-grilled marinated Shish Tawook chunks, bell peppers, black olives, mozzarella, and dynamic garlic premium sauce.',
     price: 125,
     image: IMAGES.crepe,
@@ -85,9 +88,9 @@ export const MENU_ITEMS: MenuItem[] = [
   // --- FRIED CHICKEN CATEGORY ---
   {
     id: 'fc-1',
-    nameAr: 'وجبة همر الفردية الكلاسيكية',
+    nameAr: 'وجبة هامر الفردية الكلاسيكية',
     nameEn: 'Hummer Solo Classic Meal',
-    descriptionAr: '3 قطع من الدجاج المقلي المقرمش الذهبي بتتبيلة همر السرية المتبلة لمدة ٢٤ ساعة، بطاطس كولوسال، كول سلو غني، كيزر طازج، وصوص ثوم مميز.',
+    descriptionAr: '3 قطع من الدجاج المقلي المقرمش الذهبي بتتبيلة هامر السرية المتبلة لمدة ٢٤ ساعة، بطاطس كولوسال، كول سلو غني، كيزر طازج، وصوص ثوم مميز.',
     descriptionEn: '3 pieces of crunchy, deep-fried chicken marinated for 24h, giant fries, creamy coleslaw, fresh bun, and our signature dip.',
     price: 165,
     image: IMAGES.friedChicken,
@@ -101,7 +104,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'fc-2',
-    nameAr: 'دلو همر العائلي (توفير اللمة)',
+    nameAr: 'دلو هامر العائلي (توفير اللمة)',
     nameEn: 'Hummer Save-Big Family Bucket',
     descriptionAr: '9 قطع دجاج كريسبي وجميل (توازن رائع من الفخذ والصدور والدبابيس)، بطاطس حجم عائلي، طبق كول سلو كبير، ٣ كيزر، و ٣ صوصات مجانية من اختيارك.',
     descriptionEn: '9 super crispy chicken pieces, massive bucket of golden fries, large coleslaw bowl, 3 fresh buns, and 3 complimentary dips.',
@@ -125,7 +128,7 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'fc-4',
-    nameAr: 'صندوق اللمة الخارقة - همر بوكس',
+    nameAr: 'صندوق اللمة الخارقة - هامر بوكس',
     nameEn: 'The Ultimate Hummer Mega Bucket',
     descriptionAr: '15 قطعة كاملة من الفراخ المقلية العظيمة كريسبي على أصوات القرمشة العالية، بطاطس عائلية عملاقة، علبة كول سلو جامبو، ٥ كيزر ولتر كونت الكوكاكولا الباردة.',
     descriptionEn: '15 delicious pieces of fried chicken cooked to gold perfection, mega family fries, jumbo coleslaw, 5 fresh buns, and a 1-liter cold Pepsi bottle.',
@@ -164,7 +167,7 @@ export const MENU_ITEMS: MenuItem[] = [
   // --- SIDES ---
   {
     id: 'sd-1',
-    nameAr: 'بطاطس همر الموتزاريلا والبيكون',
+    nameAr: 'بطاطس هامر الموتزاريلا والبيكون',
     nameEn: 'Loaded Hummer Cheese & Bacon Fries',
     descriptionAr: 'طبق بطاطس مقلية ذهبية وسميكة، مغطاه بشيدر سايح دافئ، رشة جبنة موتزاريلا سايحة، وقطع اللحم البقري المقدد (بيكون) المدخنة الفاخرة.',
     descriptionEn: 'Loaded premium french fries dynamic, topped with hot liquid cheddar reservoir, stringy mozzarella cheese pull, and smoked beef bacon bits.',
@@ -175,9 +178,9 @@ export const MENU_ITEMS: MenuItem[] = [
   },
   {
     id: 'sd-2',
-    nameAr: 'سلطة كول سلو همر الكريمية',
+    nameAr: 'سلطة كول سلو هامر الكريمية',
     nameEn: 'Hummer Signature Sweet Coleslaw',
-    descriptionAr: 'كرنب وجزر مبشورين طازة بخلطة مايونيز همر الكريمية الشهيرة بالعسل والليمون الخفيف.',
+    descriptionAr: 'كرنب وجزر مبشورين طازة بخلطة مايونيز هامر الكريمية الشهيرة بالعسل والليمون الخفيف.',
     descriptionEn: 'Finely grated fresh cabbage and carrots tossed in our signature creamy sweet dressing with natural honey hint.',
     price: 35,
     image: IMAGES.friedChicken,
@@ -209,7 +212,7 @@ export const MENU_ITEMS: MenuItem[] = [
     id: 'dr-2',
     nameAr: 'علبة ميراندا برتقال منعشة',
     nameEn: 'Mirinda Orange Can',
-    descriptionAr: 'مذاق البرتقال اللذيذ الفوار والمنعش مع وجبة همر المقرمشة.',
+    descriptionAr: 'مذاق البرتقال اللذيذ الفوار والمنعش مع وجبة هامر المقرمشة.',
     descriptionEn: 'Zesty sparkling orange fizzy Mirinda can to light up your meal experience.',
     price: 20,
     image: IMAGES.hero,
@@ -252,7 +255,7 @@ export const CUSTOMIZE_INGREDIENTS = {
     { id: 't-banana', nameAr: 'حلقات موز طازجة (للحلو)', nameEn: 'Fresh Banana Rondelles (Sweet)', price: 15 }
   ],
   sauces: [
-    { id: 's-hummer', nameAr: 'صوص همر السري الأقوى', nameEn: 'Hummer Original Secret Sauce', price: 12 },
+    { id: 's-hummer', nameAr: 'صوص هامر السري الأقوى', nameEn: 'Hummer Original Secret Sauce', price: 12 },
     { id: 's-cheddar', nameAr: 'صوص جبن شيدر سايح ساخن', nameEn: 'Gooey Warm Cheddar Cheese Dip', price: 12 },
     { id: 's-ranch', nameAr: 'صوص رانش أمريكي كريمي', nameEn: 'Creamy Buttermilk Ranch Sauce', price: 10 },
     { id: 's-bbq', nameAr: 'صوص باربكيو مدخن غامق', nameEn: 'Smoky Dark Barbecue Glaze', price: 8 },
@@ -268,7 +271,7 @@ export const SAMPLE_REVIEWS = [
     id: 'r-1',
     name: 'أحمد أشرف البطل',
     rating: 5,
-    comment: 'بصراحة كريب سوبر همر الجبار ده حكاية تانية خالص! الكريب مقرمش والحشو مليان للاخر وفراخ نظيفة جداً ومستوية صح جداً. والتوصيل كان أسرع من المتوقع. همر هيكتسح السوق!',
+    comment: 'بصراحة كريب سوبر هامر الجبار ده حكاية تانية خالص! الكريب مقرمش والحشو مليان للاخر وفراخ نظيفة جداً ومستوية صح جداً. والتوصيل كان أسرع من المتوقع. هامر هيكتسح السوق!',
     date: 'منذ ساعتين',
     badge: 'ملك المقرمشات'
   },
@@ -286,7 +289,7 @@ export const SAMPLE_REVIEWS = [
     rating: 4,
     comment: 'الدلو الـ 9 قطع بيكفي العيلة كلها وبيفيض وبطاطسهم بتبقى سخنة ومقرمشة عكس محلات تانية كتير بتجيلك طرية. تتبيلة الفراخ خطيرة ومكتومة بالبهارات المحبوكة. عاش يا شباب.',
     date: 'منذ يومين',
-    badge: 'همر الأكيل'
+    badge: 'هامر الأكيل'
   },
   {
     id: 'r-4',

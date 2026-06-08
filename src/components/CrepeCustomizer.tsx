@@ -69,7 +69,7 @@ export default function CrepeCustomizer({ onAddCustomCrepe, lang }: CrepeCustomi
   // Compile summary details for cart
   const handleSubmit = () => {
     const formattedNameAr = customName.trim() 
-      ? `كريب همر: ${customName}` 
+      ? `كريب هامر: ${customName}` 
       : `كريب مبتكر مخصص (${selectedBase.nameAr.slice(0, 9)})`;
     const formattedNameEn = customName.trim() 
       ? `Hummer Crepe: ${customName}` 
@@ -115,7 +115,7 @@ export default function CrepeCustomizer({ onAddCustomCrepe, lang }: CrepeCustomi
             <span className="text-red-700 tracking-wide uppercase">{isRtl ? 'افتح المعمل وصمم وجبتك على ذوقك' : 'Open the Lab and Craft Custom Crepe'}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 font-sans tracking-tight">
-            {isRtl ? 'مصنع كريبات همر التفاعلي' : 'Interactive Hummer Crepe Lab'}
+            {isRtl ? 'مصنع كريبات هامر التفاعلي' : 'Interactive Hummer Crepe Lab'}
           </h2>
           <p className="text-zinc-500 text-xs sm:text-sm mt-2 leading-relaxed">
             {isRtl 
@@ -131,7 +131,7 @@ export default function CrepeCustomizer({ onAddCustomCrepe, lang }: CrepeCustomi
             {/* Aesthetic circular grid overlay */}
             <div className="absolute inset-0 bg-[radial-gradient(#e4e4e7_1px,transparent_1px)] [background-size:16px_16px] opacity-60 pointer-events-none rounded-[2.5rem]" />
             <div className="absolute top-5 right-6 text-[10px] text-zinc-400 font-black tracking-widest uppercase">
-              {isRtl ? 'مطبخ همر للمحاكاة الفورية' : 'HUMMER LIVE PREVIEW PANEL'}
+              {isRtl ? 'مطبخ هامر للمحاكاة الفورية' : 'HUMMER LIVE PREVIEW PANEL'}
             </div>
 
             {/* Custom Crepe Canvas Render */}
@@ -406,7 +406,7 @@ export default function CrepeCustomizer({ onAddCustomCrepe, lang }: CrepeCustomi
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-black text-zinc-800 flex items-center gap-1.5 font-sans uppercase tracking-wider">
                   <span className="w-1.5 h-3.5 bg-red-600 rounded-full inline-block"></span>
-                  {isRtl ? '٤. دبل صوصات همر الساحرة (الحد أقصى ٤):' : '4. Drizzle Secret Glazes/Sauces (Max 4):'}
+                  {isRtl ? '٤. دبل صوصات هامر الساحرة (الحد أقصى ٤):' : '4. Drizzle Secret Glazes/Sauces (Max 4):'}
                 </h3>
                 <span className="text-[10px] text-zinc-400 font-black">
                   {selectedSauces.length} / 4

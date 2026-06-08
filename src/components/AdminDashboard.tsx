@@ -21,6 +21,11 @@ interface AdminDashboardProps {
   onUpdateSiteSettings: (newSettings: SiteSettings) => void;
   branches: Branch[];
   onUpdateBranches: (newBranches: Branch[]) => void;
+  riders: any[];
+  onAddRider: (name: string, phone: string) => void;
+  onDeleteRider: (riderId: string) => void;
+  onUpdateRiderStatus: (riderId: string, status: 'here' | 'out') => void;
+  onAssignRiderToOrder: (orderId: string, riderId: string) => void;
 }
 
 export default function AdminDashboard({
@@ -36,16 +41,38 @@ export default function AdminDashboard({
   siteSettings,
   onUpdateSiteSettings,
   branches,
-  onUpdateBranches
+  onUpdateBranches,
+  riders = [],
+  onAddRider,
+  onDeleteRider,
+  onUpdateRiderStatus,
+  onAssignRiderToOrder
 }: AdminDashboardProps) {
   const isRtl = lang === 'ar';
   
-  // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings'
-  const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings'>('orders');
+  // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders'
+  const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders'>('orders');
 
   
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
+
+  // Rider/Driver WhatsApp states
+  const [defaultRiderPhone, setDefaultRiderPhone] = useState(() => {
+    return localStorage.getItem('hummer_default_rider_phone') || '';
+  });
+  const [riderPhones, setRiderPhones] = useState<Record<string, string>>({});
+
+  const getWhatsAppLink = (phone: string, text?: string) => {
+    let clean = phone.replace(/\D/g, '');
+    if (!clean) return '#';
+    if (clean.length === 11 && clean.startsWith('0')) {
+      clean = '2' + clean;
+    } else if (clean.length === 10 && clean.startsWith('1')) {
+      clean = '20' + clean;
+    }
+    return `https://wa.me/${clean}${text ? `?text=${encodeURIComponent(text)}` : ''}`;
+  };
 
   // Cloudinary configuration states (saving to LocalStorage so they persist)
   const [cloudName, setCloudName] = useState(() => {
@@ -72,6 +99,10 @@ export default function AdminDashboard({
   const [sizeNameAr, setSizeNameAr] = useState('');
   const [sizeNameEn, setSizeNameEn] = useState('');
   const [sizeExtraPrice, setSizeExtraPrice] = useState<number>(0);
+
+  // Rider creation form states
+  const [newRiderName, setNewRiderName] = useState('');
+  const [newRiderPhone, setNewRiderPhone] = useState('');
 
   // Upload feedback states
   const [isUploading, setIsUploading] = useState(false);
@@ -575,7 +606,7 @@ export default function AdminDashboard({
         <div className="text-center">
           <h2 className="text-lg font-black text-white flex items-center gap-2 justify-center tracking-normal">
             <ChefHat className="w-5 h-5 text-red-500" />
-            <span>{isRtl ? 'لوحة تحكم كاشير ومطبخ همر 🍔' : 'Hummer POS & Kitchen Radar'}</span>
+            <span>{isRtl ? 'لوحة تحكم كاشير ومطبخ هامر 🍔' : 'Hummer POS & Kitchen Radar'}</span>
           </h2>
           <p className="text-[10px] text-zinc-500 font-mono">STATION ID: #CAIRO-19033-MAIN</p>
         </div>
@@ -661,6 +692,20 @@ export default function AdminDashboard({
             >
               <span>{isRtl ? 'إعدادات الرفع (Cloudinary)' : 'Cloudinary Config'}</span>
               <Settings className="w-4 h-4 text-zinc-400" />
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('riders')}
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
+                activeSubTab === 'riders'
+                  ? 'bg-red-600 text-white shadow'
+                  : 'bg-zinc-800/40 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }`}
+            >
+              <span>{isRtl ? 'إدارة الطيارين المسجلين 🏍️' : 'Rider Captains 🏍️'}</span>
+              <span className="bg-zinc-950 text-white font-mono text-[10px] py-0.5 px-2 rounded-full font-black">
+                {riders.length}
+              </span>
             </button>
           </div>
 
@@ -777,10 +822,22 @@ export default function AdminDashboard({
                           {/* Ticket body elements */}
                           <div className="p-5 flex-1 space-y-4 text-right">
                             {/* Client card info */}
-                            <div className="border border-zinc-800 bg-zinc-950 p-3.5 rounded-2xl text-xs space-y-1 block">
-                              <p className="font-black text-white text-[13px]">
-                                {order.customerName} - <span className="font-mono text-amber-500 text-xs">{order.phone}</span>
-                              </p>
+                            <div className="border border-zinc-800 bg-zinc-950 p-3.5 rounded-2xl text-xs space-y-2 block">
+                              <div className="flex justify-between items-center gap-2">
+                                <a
+                                  href={getWhatsAppLink(order.phone, isRtl ? `أهلاً يا فندم، أنا من مطعم هامر وبخصوص طلبك رقم ${order.id}...` : `Hello, I'm from Hummer Restaurant regarding your order ${order.id}...`)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  className="px-2 py-1 bg-green-600/20 hover:bg-green-600/35 border border-green-500/30 text-green-400 rounded-lg text-[10px] font-black flex items-center gap-1.5 cursor-pointer transition active:scale-95 shrink-0"
+                                  title={isRtl ? 'فتح واتساب العميل' : 'Open customer WhatsApp'}
+                                >
+                                  <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse inline-block" />
+                                  <span>{isRtl ? 'واتساب العميل 💬' : 'Client WA 💬'}</span>
+                                </a>
+                                <p className="font-black text-white text-[13px] text-right">
+                                  {order.customerName} - <span className="font-mono text-amber-500 text-xs">{order.phone}</span>
+                                </p>
+                              </div>
                               <p className="text-zinc-400 text-[11px] leading-relaxed font-semibold">
                                 {order.deliveryAddress}
                               </p>
@@ -800,7 +857,7 @@ export default function AdminDashboard({
                               <div className="space-y-1.5 text-xs text-zinc-200">
                                 {order.items.map((item, i) => (
                                   <div key={i} className="flex justify-between items-center bg-zinc-950/40 border border-zinc-850 p-2 rounded-xl">
-                                    <span className="font-mono font-black text-zinc-405 text-zinc-400">
+                                    <span className="font-mono font-black text-zinc-400">
                                       {item.pricePerUnit * item.quantity} ج.م
                                     </span>
                                     <div className="text-right">
@@ -822,6 +879,101 @@ export default function AdminDashboard({
                                     </div>
                                   </div>
                                 ))}
+                              </div>
+                            </div>
+
+                            {/* Rider dispatch center */}
+                            <div className="mt-4 border-t border-zinc-850 pt-3.5 space-y-2 text-right">
+                              <div className="flex justify-between items-center">
+                                <span className="text-[10.5px] font-black text-zinc-400 uppercase tracking-wider">
+                                  {isRtl ? 'مشاركة وتذكرة الطيار 🛵:' : 'DISPATCH RIDER TICKET 🛵:'}
+                                </span>
+                                {order.captainName && (
+                                  <span className="text-[9px] font-bold text-zinc-500">
+                                    {isRtl ? `الطيار الإفتراضي: ${order.captainName}` : `Default rider: ${order.captainName}`}
+                                  </span>
+                                )}
+                              </div>
+
+                              <div className="space-y-2">
+                                <div className="space-y-1">
+                                  <label className="text-[9px] font-black block text-right text-zinc-400">
+                                    {isRtl ? 'اختر طياراً من الطاقم المسجل بالسيستم:' : 'Select Registered Store Rider:'}
+                                  </label>
+                                  <select
+                                    value={order.riderId || ''}
+                                    onChange={(e) => {
+                                      const selectedRiderId = e.target.value;
+                                      if (selectedRiderId) {
+                                        onAssignRiderToOrder(order.id, selectedRiderId);
+                                        const selected = riders.find(r => r.id === selectedRiderId);
+                                        if (selected) {
+                                          setRiderPhones(prev => ({ ...prev, [order.id]: selected.phone }));
+                                        }
+                                      }
+                                    }}
+                                    className="w-full bg-zinc-950 border border-zinc-850 text-xs px-3 py-2 text-white rounded-xl outline-none focus:border-green-600 font-bold text-right"
+                                  >
+                                    <option value="">
+                                      {isRtl ? '-- اختر من الطيارين المتسجلين 🛵 --' : '-- Choose Crew Rider 🛵 --'}
+                                    </option>
+                                    {riders.map(r => (
+                                      <option key={r.id} value={r.id} className="text-zinc-900 bg-white">
+                                        {r.name} ({r.phone}) - {r.status === 'here' ? (isRtl ? '🏠 بالصالة متاح' : '🏠 Free at store') : (isRtl ? '🏍️ برا بالمشوار' : '🏍️ Out delivering')}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+
+                                <div className="flex gap-2 items-center">
+                                  <input
+                                    type="tel"
+                                    placeholder={isRtl ? 'أو اكتب رقم هاتف يدوياً...' : 'Rider WhatsApp phone...'}
+                                    value={riderPhones[order.id] !== undefined ? riderPhones[order.id] : (order.riderPhone || defaultRiderPhone)}
+                                    onChange={(e) => {
+                                      const val = e.target.value;
+                                      setRiderPhones(prev => ({ ...prev, [order.id]: val }));
+                                      setDefaultRiderPhone(val);
+                                      localStorage.setItem('hummer_default_rider_phone', val);
+                                    }}
+                                    className="w-full bg-zinc-950 border border-zinc-800 text-xs px-3 py-2 text-white rounded-xl outline-none focus:border-green-600 ltr text-center font-mono font-bold"
+                                  />
+
+                                  <a
+                                    href={getWhatsAppLink(
+                                      riderPhones[order.id] !== undefined ? riderPhones[order.id] : (order.riderPhone || defaultRiderPhone),
+                                      `*طلب توصيل جديد من مطعم هامر 🛵*\n\n` +
+                                      `*رقم الأوردر:* ${order.id}\n` +
+                                      `*العميل:* ${order.customerName}\n` +
+                                      `*تليفون العميل:* ${order.phone}\n` +
+                                      `*العنوان بالتفصيل:* ${order.deliveryAddress}\n` +
+                                      `*طريقة الدفع:* ${order.paymentMethod === 'cash' ? 'كاش مع المندوب 💵' : 'فيزا مع المندوب 💳'}\n` +
+                                      `*إجمالي الفاتورة المطلوب تحصيلها:* ${order.totalPrice} ج.م\n\n` +
+                                      `*تفاصيل علبة الأوردر:*\n` +
+                                      order.items.map((item, idx) => {
+                                        let itemText = `• ${item.nameAr || item.nameEn} (عدد: ${item.quantity})`;
+                                        if (item.selectedSizeAr) {
+                                          itemText += ` [حجم: ${item.selectedSizeAr}]`;
+                                        }
+                                        if (item.isSpicy) {
+                                          itemText += ` (سبايسي)`;
+                                        }
+                                        if (item.notes) {
+                                          itemText += `\n   ملاحظة: ${item.notes}`;
+                                        }
+                                        return itemText;
+                                      }).join('\n') + `\n\n_شكراً يا بطل! طِر بالطلب وحافظ على السخونة والقرمشة! 🔥_`
+                                    )}
+                                    target="_blank"
+                                    rel="noreferrer"
+                                    onClick={() => {
+                                      toastNotification(isRtl ? 'جاري توجيهك إلى واتساب لإرسال تذكرة الطيار!' : 'Redirecting to WhatsApp with Rider dispatch details!');
+                                    }}
+                                    className="px-3.5 py-2 bg-green-600 hover:bg-green-750 text-white text-[11px] font-black rounded-xl flex items-center justify-center gap-1 cursor-pointer transition-all active:scale-95 shrink-0 shadow-md border border-green-700"
+                                  >
+                                    <span>{isRtl ? 'إرسال للطيار 🛵' : 'Send'}</span>
+                                  </a>
+                                </div>
                               </div>
                             </div>
                           </div>
@@ -906,7 +1058,7 @@ export default function AdminDashboard({
                       required
                       value={formNameAr}
                       onChange={(e) => setFormNameAr(e.target.value)}
-                      placeholder="كريب سوبر همر المقرمش..."
+                      placeholder="كريب سوبر هامر المقرمش..."
                       className="w-full text-right p-3 bg-zinc-950 text-white font-bold rounded-xl border border-zinc-800 outline-none focus:border-red-600 text-xs"
                     />
                   </div>
@@ -1091,7 +1243,7 @@ export default function AdminDashboard({
                           type="text" 
                           value={sizeNameAr}
                           onChange={(e) => setSizeNameAr(e.target.value)}
-                          placeholder="مستردة همر عملاق" 
+                          placeholder="مستردة هامر عملاق" 
                           className="w-full pr-3 pl-1 py-2 rounded-lg bg-zinc-950 border border-zinc-850 text-white text-xs text-right font-bold"
                         />
                       </div>
@@ -1328,7 +1480,7 @@ export default function AdminDashboard({
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
                         {/* Badge Ar */}
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'شارة همر الصغيرة (عربي):' : 'Mini Badge Title (Arabic):'}</label>
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'شارة هامر الصغيرة (عربي):' : 'Mini Badge Title (Arabic):'}</label>
                           <input
                             type="text"
                             value={editedSettings?.heroBadgeAr || ''}
@@ -1338,7 +1490,7 @@ export default function AdminDashboard({
                         </div>
                         {/* Badge En */}
                         <div className="space-y-1">
-                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'شارة همر الصغيرة (إنجليزي):' : 'Mini Badge Title (English):'}</label>
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'شارة هامر الصغيرة (إنجليزي):' : 'Mini Badge Title (English):'}</label>
                           <input
                             type="text"
                             value={editedSettings?.heroBadgeEn || ''}
@@ -1555,7 +1707,7 @@ export default function AdminDashboard({
                           type="text"
                           value={editedSettings?.logoUrl || ''}
                           onChange={(e) => setEditedSettings({ ...editedSettings, logoUrl: e.target.value })}
-                          placeholder="/src/assets/images/hummer_logo_1780839326548.png"
+                          placeholder="https://example.com/images/logo.png"
                           className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
                         />
                         <p className="text-[9px] text-zinc-500 font-bold mt-1">
@@ -1686,7 +1838,7 @@ export default function AdminDashboard({
                   <div className="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-800 pb-3">
                     <h4 className="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-2 justify-end font-sans">
                       <Building className="w-5 h-5 text-amber-500 animate-pulse" />
-                      <span>{isRtl ? 'قائمة فروع مطاعم همر:' : 'Physical Outlets & Warehouses:'}</span>
+                      <span>{isRtl ? 'قائمة فروع مطاعم هامر:' : 'Physical Outlets & Warehouses:'}</span>
                     </h4>
                     {editingBranchId === null && (
                       <button
@@ -1936,6 +2088,124 @@ export default function AdminDashboard({
                 </ol>
               </div>
 
+            </div>
+          )}
+
+          {/* 4. SCREEN: RIDERS MANAGEMENT PANEL */}
+          {activeSubTab === 'riders' && (
+            <div className="bg-zinc-900 border border-zinc-800 rounded-[2.5rem] p-6 space-y-6 text-right">
+              <div className="border-b border-zinc-800 pb-4">
+                <h3 className="text-base font-black text-white font-sans mt-1">
+                  {isRtl ? 'إدارة الطيارين المسجلين بالمطعم 🏍️' : 'Registered Store Riders 🏍️'}
+                </h3>
+                <p className="text-xs text-zinc-500 mt-1">
+                  {isRtl 
+                    ? 'أضف طيارين دائمين ليرتبطوا تلقائياً بالأوردرات، وتتبع حضورهم وعودتهم من الأوردرات متاحين وبرا.' 
+                    : 'Manage your logistics crew. View who is out delivering or here at the store.'}
+                </p>
+              </div>
+
+              {/* Add New Rider Form */}
+              <div className="bg-zinc-950 p-5 rounded-2xl border border-zinc-850 space-y-4">
+                <h4 className="text-xs font-black text-red-500 uppercase tracking-widest block border-b border-zinc-800/60 pb-1.5">
+                  {isRtl ? 'تسجيل طيار جديد في النظام:' : 'Register New Store Rider:'}
+                </h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'اسم الكابتن/الطيار:' : 'Rider Full Name:'}</label>
+                    <input
+                      type="text"
+                      value={newRiderName}
+                      onChange={(e) => setNewRiderName(e.target.value)}
+                      placeholder={isRtl ? 'مثال: الكابتن هاني التورتورا...' : 'Captain Hany...'}
+                      className="w-full text-right p-2.5 bg-zinc-900 text-white rounded-xl border border-zinc-800 text-xs font-bold outline-none focus:border-red-600 focus:border-red-600"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'رقم موبايل الواتساب:' : 'WhatsApp Mobile:'}</label>
+                    <input
+                      type="tel"
+                      maxLength={11}
+                      value={newRiderPhone}
+                      onChange={(e) => setNewRiderPhone(e.target.value)}
+                      placeholder="01xxxxxxxxx"
+                      className="w-full text-left p-2.5 bg-zinc-900 text-white rounded-xl border border-zinc-800 text-xs font-bold outline-none focus:border-red-650 ltr font-mono"
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!newRiderName.trim() || !newRiderPhone.trim()) {
+                        alert(isRtl ? 'يرجى ملء جميع خانات اسم وهاتف الطيار' : 'Please fill all elements');
+                        return;
+                      }
+                      if (newRiderPhone.length < 11 || !/^\d+$/.test(newRiderPhone)) {
+                        alert(isRtl ? 'رقم الهاتف يجب أن يكون كود مصر ١١ رقم' : 'Egyptian phone must be 11 digits');
+                        return;
+                      }
+                      onAddRider(newRiderName.trim(), newRiderPhone.trim());
+                      setNewRiderName('');
+                      setNewRiderPhone('');
+                    }}
+                    className="px-5 py-2 bg-red-600 hover:bg-red-750 text-white text-xs font-black rounded-xl border border-red-700 cursor-pointer transition flex items-center justify-center gap-1.5"
+                  >
+                    <Plus className="w-4 h-4 text-white shrink-0" />
+                    <span>{isRtl ? 'تثبيت الطيار بالسيستم' : 'Register Captain'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Registered Riders List Display */}
+              <div className="space-y-3">
+                <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest pb-1.5 block border-b border-zinc-800/60">
+                  {isRtl ? 'قائمة الطيارين المتاحين وبالمشاوير:' : 'Active Store Logistics Team:'}
+                </h4>
+
+                {riders.length === 0 ? (
+                  <p className="text-xs text-zinc-500 font-bold text-center py-6">
+                    {isRtl ? '⚠️ لم تقم بتسجيل أي طيارين في السيستم بعد! أضف طياراً في النموذج بالأعلى.' : 'No registered store logistics captains found.'}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {riders.map((r) => (
+                      <div key={r.id} className="bg-zinc-950 p-4 rounded-2xl border border-zinc-850 flex items-center justify-between gap-4 text-xs font-bold">
+                        <button
+                          onClick={() => onDeleteRider(r.id)}
+                          className="p-1.5 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg cursor-pointer transition shrink-0"
+                          title={isRtl ? 'حذف الطيار' : 'Delete Rider'}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+
+                        <div className="flex gap-2 items-center shrink-0">
+                          <button
+                            onClick={() => {
+                              const nextStatus = r.status === 'here' ? 'out' : 'here';
+                              onUpdateRiderStatus(r.id, nextStatus);
+                            }}
+                            className={`px-3 py-1 rounded-lg text-[10px] font-black transition cursor-pointer select-none border ${
+                              r.status === 'here'
+                                ? 'bg-green-600/10 text-green-500 border-green-500/30'
+                                : 'bg-red-600/10 text-red-500 border-red-500/30 font-black'
+                            }`}
+                          >
+                            {r.status === 'here' ? (isRtl ? 'هنا بالصالة 🏠' : 'Here 🏠') : (isRtl ? 'برا بالمشوار 🏍️' : 'Out 🏍️')}
+                          </button>
+                        </div>
+
+                        <div className="text-right flex-1 select-none">
+                          <h5 className="font-sans font-black text-white text-xs">{r.name}</h5>
+                          <p className="text-[10px] text-zinc-500 font-mono font-bold mt-0.5">{r.phone}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
 

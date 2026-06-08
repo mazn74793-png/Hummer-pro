@@ -16,7 +16,7 @@ export default function ReviewsSection({ lang }: ReviewsSectionProps) {
   const [name, setName] = useState('');
   const [rating, setRating] = useState(5);
   const [comment, setComment] = useState('');
-  const [selectedBadge, setSelectedBadge] = useState<Review['badge']>('همر الأكيل');
+  const [selectedBadge, setSelectedBadge] = useState<Review['badge']>('هامر الأكيل');
   const [isSubmitted, setIsSubmitted] = useState(false);
 
   useEffect(() => {
@@ -64,11 +64,11 @@ export default function ReviewsSection({ lang }: ReviewsSectionProps) {
             <span className="text-red-700 tracking-wide uppercase">{isRtl ? 'آراء وحكاوي الأكيلة!' : 'Hear From Our Food Critics!'}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 font-sans tracking-tight">
-            {isRtl ? 'ماذا يقول عشاق همر عن القرمشة؟' : 'The Hummer Crunch Talk of the Town'}
+            {isRtl ? 'ماذا يقول عشاق هامر عن القرمشة؟' : 'The Hummer Crunch Talk of the Town'}
           </h2>
           <p className="text-zinc-500 text-xs sm:text-sm mt-2 leading-relaxed">
             {isRtl 
-              ? 'نهتم برأي كل عميل من عيلة همر. إقرأ مراجعات حقيقية وتفاعلية كتبها عشاق ومحبو الكريبات الساخنة والفراخ الكريسبي المقرمشة!'
+              ? 'نهتم برأي كل عميل من عيلة هامر. إقرأ مراجعات حقيقية وتفاعلية كتبها عشاق ومحبو الكريبات الساخنة والفراخ الكريسبي المقرمشة!'
               : 'Feedback means the world to our kitchen. Here are authentic, organic reviews from people who devour our hot crepes and crispy golden brotested strips daily!'}
           </p>
         </div>
@@ -133,7 +133,7 @@ export default function ReviewsSection({ lang }: ReviewsSectionProps) {
                   {isRtl ? 'اختر لقب الأكيل الخاص بك:' : 'Pick your Hunger Badge:'}
                 </label>
                 <div className="grid grid-cols-2 gap-2">
-                  {(['عاشق الكريبات', 'ملك المقرمشات', 'همر الأكيل', 'زبون دائم'] as Review['badge'][]).map((bdg) => (
+                  {(['عاشق الكريبات', 'ملك المقرمشات', 'هامر الأكيل', 'زبون دائم'] as Review['badge'][]).map((bdg) => (
                     <button
                       type="button"
                       key={bdg}

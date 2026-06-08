@@ -35,7 +35,7 @@ export default function HeroSection({ onOpenWheel, lang, siteSettings }: HeroSec
                 <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-spin" />
                 <span>
                   {isRtl 
-                    ? (siteSettings?.heroBadgeAr || 'همر الأصلي دايماً يكسب') 
+                    ? (siteSettings?.heroBadgeAr || 'هامر الأصلي دايماً يكسب') 
                     : (siteSettings?.heroBadgeEn || 'Original Hummer Taste')}
                 </span>
               </motion.div>
@@ -43,7 +43,7 @@ export default function HeroSection({ onOpenWheel, lang, siteSettings }: HeroSec
               <h1 className="text-3xl sm:text-5xl md:text-6xl font-black leading-tight italic uppercase tracking-tighter text-right">
                 {isRtl ? (
                   <span className="block whitespace-pre-line text-white">
-                    {siteSettings?.heroTitleAr || 'كريب وقرمشة ملوك همر!'}
+                    {siteSettings?.heroTitleAr || 'كريب وقرمشة ملوك هامر!'}
                   </span>
                 ) : (
                   <span className="block whitespace-pre-line text-white">
@@ -165,7 +165,7 @@ export default function HeroSection({ onOpenWheel, lang, siteSettings }: HeroSec
               </h3>
               <p className="text-zinc-500 text-xs font-bold max-w-sm">
                 {isRtl 
-                  ? 'دير عجلة الحظ المضمونة همر واكسب كود خصم فوري أو مقبلات مجانية لطلبك.' 
+                  ? 'دير عجلة الحظ المضمونة هامر واكسب كود خصم فوري أو مقبلات مجانية لطلبك.' 
                   : 'Spin our lucky winning wheel to snag extreme discounts or crispy free fries right away.'}
               </p>
               

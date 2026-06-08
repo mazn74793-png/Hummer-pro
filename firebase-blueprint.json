@@ -1,0 +1,71 @@
+{
+  "entities": {
+    "User": {
+      "title": "User Profile",
+      "description": "User account information, registered phone, and saved shipping addresses",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "addresses": { "type": "array" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email"]
+    },
+    "Rider": {
+      "title": "Delivery Rider",
+      "description": "Registered delivery captain managed by administrators",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "phone": { "type": "string" },
+        "status": { "type": "string", "enum": ["here", "out"] },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "name", "phone", "status"]
+    },
+    "Order": {
+      "title": "Customer Order",
+      "description": "Order details, items, pricing, and live status with assigned rider",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "customerName": { "type": "string" },
+        "phone": { "type": "string" },
+        "deliveryAddress": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "items": { "type": "array" },
+        "subtotal": { "type": "number" },
+        "discountAmount": { "type": "number" },
+        "deliveryFee": { "type": "number" },
+        "finalTotal": { "type": "number" },
+        "status": { "type": "string", "enum": ["received", "cooking", "wrapping", "delivering", "completed"] },
+        "riderId": { "type": "string" },
+        "riderName": { "type": "string" },
+        "riderPhone": { "type": "string" },
+        "couponCode": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "customerName", "phone", "deliveryAddress", "paymentMethod", "items", "finalTotal", "status", "createdAt"]
+    }
+  },
+  "firestore": {
+    "users/{userId}": {
+      "schema": "User",
+      "description": "User profile metadata, stored on registration/login"
+    },
+    "riders/{riderId}": {
+      "schema": "Rider",
+      "description": "Registered delivery riders"
+    },
+    "orders/{orderId}": {
+      "schema": "Order",
+      "description": "Orders, synchronized in real time with administrators"
+    }
+  }
+}

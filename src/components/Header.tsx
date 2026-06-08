@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Flame, PhoneCall, Gift, MapPin, Sparkles, Smartphone, Laptop } from 'lucide-react';
+import { ShoppingCart, Flame, PhoneCall, Gift, MapPin, Sparkles, Smartphone, Laptop, User } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SiteSettings } from '../types';
+import defaultLogo from '../assets/images/hummer_logo_1780839326548.png';
 
 interface HeaderProps {
   cartCount: number;
@@ -12,6 +13,7 @@ interface HeaderProps {
   activeTab: string;
   setActiveTab: (tab: string) => void;
   siteSettings: SiteSettings;
+  onOpenProfile: () => void;
 }
 
 export default function Header({
@@ -23,6 +25,7 @@ export default function Header({
   activeTab,
   setActiveTab,
   siteSettings,
+  onOpenProfile,
 }: HeaderProps) {
   const isRtl = lang === 'ar';
 
@@ -98,13 +101,13 @@ export default function Header({
           <Flame className="w-4 h-4 text-amber-400 animate-pulse fill-amber-350 shrink-0" />
           <span className="tracking-wide">
             {isRtl 
-              ? (siteSettings?.promoBannerAr || 'عروض الصيف من همر! خصم ١٠٪ على كل الكريبات بـ كود HUMMER10')
+              ? (siteSettings?.promoBannerAr || 'عروض الصيف من هامر! خصم ١٠٪ على كل الكريبات بـ كود HUMMER10')
               : (siteSettings?.promoBannerEn || 'Summer Deals! 10% OFF all crepes with code HUMMER10')}
           </span>
           <span className="hidden sm:inline-block h-1.5 w-1.5 rounded-full bg-white/70"></span>
           <span className="hidden sm:flex items-center gap-1.5 bg-red-700/80 px-2 py-0.5 rounded-md text-[10px] font-extrabold border border-red-500">
             <Sparkles className="w-3.5 h-3.5 text-amber-300 animate-bounce" />
-            {isRtl ? 'عجلة الحظ همر لايف!' : 'Hummer Wheel Live!'}
+            {isRtl ? 'عجلة الحظ هامر لايف!' : 'Hummer Wheel Live!'}
           </span>
         </div>
       </div>
@@ -116,7 +119,7 @@ export default function Header({
             <motion.img 
               whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.05 }}
               transition={{ duration: 0.5 }}
-              src={siteSettings?.logoUrl || "/src/assets/images/hummer_logo_1780839326548.png"}
+              src={siteSettings?.logoUrl || defaultLogo}
               alt="Hummer Brand Logo"
               referrerPolicy="no-referrer"
               className="w-12 h-12 rounded-2xl object-cover bg-zinc-950 shadow-md cursor-pointer"
@@ -124,7 +127,7 @@ export default function Header({
           </div>
           <div>
             <h1 className="text-xl sm:text-2xl font-black text-zinc-900 tracking-tighter flex items-center gap-1 font-sans">
-              {isRtl ? 'مطعم همر' : 'Hummer Restaurant'}
+              {isRtl ? 'مطعم هامر' : 'Hummer Restaurant'}
               <span className="text-red-700 text-[10px] font-black animate-pulse px-2 py-0.5 bg-red-50 rounded-md border border-red-200 tracking-wider">
                 CRISPY
               </span>
@@ -164,6 +167,18 @@ export default function Header({
           >
             {lang === 'ar' ? 'EN' : 'العربية'}
           </button>
+
+          {/* Account Profile Trigger Button */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={onOpenProfile}
+            className="p-2.5 bg-red-50 border border-red-100 rounded-xl hover:bg-red-100 hover:border-red-300 text-red-650 transition-all shadow-xs cursor-pointer flex items-center gap-1.5"
+            title={isRtl ? 'حساب الأكيل والتتبع حي' : 'My Account & Live Track'}
+          >
+            <User className="w-5 h-5 text-red-650 text-red-650 text-red-600 shrink-0" />
+            <span className="hidden md:inline text-xs font-black text-red-750 text-red-700">{isRtl ? 'حساب الأكيل' : 'My Profile'}</span>
+          </motion.button>
 
           {/* Cart Icon in Light Minimal style */}
           <motion.button

@@ -26,14 +26,14 @@ export default function BranchesSection({ lang, branches, siteSettings }: Branch
         <div className="text-center max-w-2xl mx-auto mb-12">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 border border-red-200 text-red-600 text-xs font-black mb-4">
             <MapPin className="w-4 h-4 text-red-600 animate-pulse" />
-            <span className="text-red-700 tracking-wide uppercase">{isRtl ? 'فروع همر - نصلك أينما كنت!' : 'Hummer Branches - Delivered Everywhere!'}</span>
+            <span className="text-red-700 tracking-wide uppercase">{isRtl ? 'فروع هامر - نصلك أينما كنت!' : 'Hummer Branches - Delivered Everywhere!'}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 font-sans tracking-tight">
-            {isRtl ? 'عناوين فروع همر ومناطق الدليفري 📍' : 'Our Physical Branches & Delivery Grid'}
+            {isRtl ? 'عناوين فروع هامر ومناطق الدليفري 📍' : 'Our Physical Branches & Delivery Grid'}
           </h2>
           <p className="text-zinc-500 text-xs sm:text-sm mt-2 leading-relaxed">
             {isRtl 
-              ? 'نهبط بـ ٣ فروع رئيسية تغطي القاهرة والجيزة بسرعة هائلة للتوصيل، صالات همر مكيفة ودايماً منورة بلمتكم وعشاق الكريسبي!'
+              ? 'نهبط بـ ٣ فروع رئيسية تغطي القاهرة والجيزة بسرعة هائلة للتوصيل، صالات هامر مكيفة ودايماً منورة بلمتكم وعشاق الكريسبي!'
               : 'Our 3 premium flagship locations cover Cairo and Giza with quick delivery. Fully chilled, comfortable dine-in parlors are always open!'}
           </p>
         </div>
