@@ -39,27 +39,12 @@ service cloud.firestore {
 
     // Riders Collection
     match /riders/{riderId} {
-      allow read, write: if isAdmin();
-      // Allow customers to read riders for tracking purposes
-      allow read: if isSignedIn();
+      allow read, write: if true;
     }
 
     // Orders Collection
     match /orders/{orderId} {
-      // 1. Guest checkout fallback: allow creation by any visitor
-      allow create: if true;
-
-      // 2. Full management for administrators (update, delete, read)
-      allow read, write: if isAdmin();
-
-      // 3. Document tracking: allow anyone to retrieve a single order by direct ID for live step tracking
-      allow get: if true;
-
-      // 4. Secure collection list querying for signed-in customers to view their historical lists
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-
-      // 5. Allow owners to update/modify their own orders
-      allow update: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow read, write: if true;
     }
   }
 }

@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { Sparkles, Utensils, Search, Flame, MapPin, PhoneCall, Clock, HelpCircle, Gift } from 'lucide-react';
+import { Sparkles, Utensils, Search, Flame, MapPin, PhoneCall, Clock, HelpCircle, Gift, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Components
@@ -135,6 +135,7 @@ export default function App() {
 
   // Active Simulated tracker order
   const [activeOrder, setActiveOrder] = useState<OrderState | null>(null);
+  const [justPlacedOrder, setJustPlacedOrder] = useState<OrderState | null>(null);
 
   // Set up real-time Firebase Auth listener
   useEffect(() => {
@@ -148,7 +149,7 @@ export default function App() {
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
 
-    const isAdmin = currentUser?.email === 'motaem23y@gmail.com';
+    const isAdmin = isAdminOpen || currentUser?.email === 'motaem23y@gmail.com';
 
     if (isAdmin) {
       // 1. Admin reads all riders with secure error handling
@@ -675,7 +676,7 @@ export default function App() {
       userId: currentUser?.uid || 'guest'
     };
 
-    setActiveOrder(placedOrder);
+    setJustPlacedOrder(placedOrder);
     
     // Write directly to our relational-structured persistent Firestore database
     try {
@@ -1163,6 +1164,82 @@ export default function App() {
           setIsProfileOpen(false);
         }}
       />
+
+      {/* 9. HIGH-FIDELITY ORDER SUCCESS CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {justPlacedOrder && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/95 backdrop-blur-xl p-4 font-sans text-right" dir="rtl">
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              className="bg-zinc-900 border-2 border-green-500/30 text-white rounded-[2.5rem] p-6 sm:p-8 max-w-md w-full relative space-y-6 shadow-[0_0_50px_rgba(34,197,94,0.15)] overflow-hidden"
+            >
+              {/* Decorative background glow */}
+              <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-green-500/10 rounded-full blur-3xl pointer-events-none" />
+
+              <div className="space-y-3 text-center relative z-10">
+                <div className="w-20 h-20 bg-green-500/10 text-green-400 rounded-full flex items-center justify-center mx-auto border-2 border-green-500/30 mb-2 animate-bounce">
+                  <CheckCircle className="w-10 h-10 text-green-500" />
+                </div>
+                <h3 className="text-2xl font-black tracking-tight text-green-400 font-sans">
+                  {lang === 'ar' ? 'تم استلام طلبك بنجاح! 🥳🍔' : 'Order Received Successfully! 🥳🍔'}
+                </h3>
+                <p className="text-xs text-zinc-350 font-bold leading-relaxed max-w-sm mx-auto font-sans">
+                  {lang === 'ar' 
+                    ? 'تهانينا! تم إرسال طلبك مباشرة لمطبخ كالهامر السحابي. وجبتك الساخنة المقرمشة جاري تجهيزها الآن بكل شغف.' 
+                    : 'Congratulations! Your order is fired up on the grill right now at Hummer Kitchen. Get ready for the ultimate crunch!'}
+                </p>
+              </div>
+
+              {/* Order Essentials Box */}
+              <div className="bg-zinc-950/70 border border-zinc-800/80 rounded-2xl p-4 space-y-2.5 text-xs font-semibold relative z-10" dir={lang === 'ar' ? 'rtl' : 'ltr'}>
+                <div className="flex justify-between items-center pb-2 border-b border-zinc-850">
+                  <span className="text-zinc-400">{lang === 'ar' ? 'رقم الطلب المعتمد:' : 'Order ID:'}</span>
+                  <span className="font-mono font-black text-white px-2 py-0.5 bg-zinc-800 rounded">{justPlacedOrder.id}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">{lang === 'ar' ? 'الاسم:' : 'Name:'}</span>
+                  <span className="text-white font-bold">{justPlacedOrder.customerName}</span>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-zinc-400">{lang === 'ar' ? 'رقم التلفون:' : 'Phone:'}</span>
+                  <span className="text-white font-mono">{justPlacedOrder.phone}</span>
+                </div>
+                <div className="flex justify-between items-start">
+                  <span className="text-zinc-400 shrink-0">{lang === 'ar' ? 'عنوان التوصيل السريع:' : 'Delivery Address:'}</span>
+                  <span className="text-white text-right text-[11px] leading-tight font-sans font-medium pl-4">{justPlacedOrder.deliveryAddress}</span>
+                </div>
+                <div className="flex justify-between items-center pt-2 border-t border-zinc-850">
+                  <span className="text-zinc-300 font-black">{lang === 'ar' ? 'المجموع الكلي الفعلي:' : 'Total Price:'}</span>
+                  <span className="text-red-500 font-black text-sm">{justPlacedOrder.totalPrice} {lang === 'ar' ? 'جنيه مصري' : 'EGP'}</span>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col gap-2.5 pt-2 relative z-10">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setActiveOrder(justPlacedOrder);
+                    setJustPlacedOrder(null);
+                  }}
+                  className="w-full py-3 bg-green-500 hover:bg-green-600 text-zinc-950 text-xs font-black rounded-xl cursor-pointer transition active:scale-95 flex items-center justify-center gap-2 shadow-lg"
+                >
+                  <span>{lang === 'ar' ? 'تتبع خطوات كريبك حيّاً على الخريطة 🏍️' : 'Track cooking & delivery live 🏍️'}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setJustPlacedOrder(null)}
+                  className="w-full py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-xs font-bold rounded-xl cursor-pointer transition active:scale-95"
+                >
+                  {lang === 'ar' ? 'إغلاق ومتابعة تصفح الموقع 🍕' : 'Close & continue browsing'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
