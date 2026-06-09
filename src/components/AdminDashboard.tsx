@@ -215,6 +215,7 @@ export default function AdminDashboard({
 
   // Order alerts sound & visual trackers
   const [lastOrderCount, setLastOrderCount] = useState(orders.length);
+  const isInitialOrderLoad = useRef(true);
 
   // Sound Synth for live cashier buzzer whistle warning (صفارة تنبيه هامر)
   const playCashierChime = () => {
@@ -252,10 +253,17 @@ export default function AdminDashboard({
 
   // Monitor newly coming live orders and play kitchen bell chime!
   useEffect(() => {
-    if (orders.length > lastOrderCount) {
-      playCashierChime();
+    if (orders.length > 0) {
+      if (isInitialOrderLoad.current) {
+        isInitialOrderLoad.current = false;
+        setLastOrderCount(orders.length);
+        return;
+      }
+      if (orders.length > lastOrderCount) {
+        playCashierChime();
+      }
+      setLastOrderCount(orders.length);
     }
-    setLastOrderCount(orders.length);
   }, [orders, lastOrderCount]);
 
   // Fullscreen toggle action

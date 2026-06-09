@@ -70,10 +70,16 @@ export default function App() {
   const [riders, setRiders] = useState<any[]>([]);
   
   // Admin states
-  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(false);
+  const [isAdminOpen, setIsAdminOpen] = useState<boolean>(() => {
+    return typeof window !== 'undefined' ? localStorage.getItem('hummer_admin_open') === 'true' : false;
+  });
   const [isPasscodePromptOpen, setIsPasscodePromptOpen] = useState<boolean>(false);
   const [enteredPasscode, setEnteredPasscode] = useState<string>('');
   const [passcodeError, setPasscodeError] = useState<string>('');
+
+  useEffect(() => {
+    localStorage.setItem('hummer_admin_open', isAdminOpen ? 'true' : 'false');
+  }, [isAdminOpen]);
   
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
     const saved = localStorage.getItem('hummer_site_settings');

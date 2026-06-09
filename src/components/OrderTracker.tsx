@@ -54,7 +54,7 @@ const STEPS: { status: OrderStep; labelAr: string; labelEn: string; descAr: stri
 
 export default function OrderTracker({ order, onCloseOrder, lang }: OrderTrackerProps) {
   const isRtl = lang === 'ar';
-  const [currentStep, setCurrentStep] = useState<OrderStep>(order.status);
+  const currentStep = order.status;
   const [eta, setEta] = useState<number>(order.estimatedMinutes);
   const [showReceipt, setShowReceipt] = useState<boolean>(() => {
     return typeof window !== 'undefined' ? window.innerWidth > 640 : false;
@@ -68,27 +68,20 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
     };
   }, []);
 
-  // Auto progression of order status simulator for extremely satisfying UX
+  // Sync ETA changes if any, and simulate a slow realistic decrease when not completed
   useEffect(() => {
-    let intervalId: NodeJS.Timeout;
-    const stepsList: OrderStep[] = ['received', 'cooking', 'wrapping', 'delivering', 'completed'];
-    const currentIndex = stepsList.indexOf(currentStep);
+    setEta(order.estimatedMinutes);
+  }, [order.estimatedMinutes]);
 
-    if (currentIndex < stepsList.length - 1) {
-      // Elevate step every 12 seconds
-      intervalId = setInterval(() => {
-        const nextIndex = currentIndex + 1;
-        const nextStep = stepsList[nextIndex];
-        setCurrentStep(nextStep);
-
-        // Deduct remaining minutes dynamically
-        setEta((prev) => Math.max(3, prev - Math.floor(Math.random() * 8 + 3)));
-      }, 12000);
+  useEffect(() => {
+    if (currentStep === 'completed') {
+      setEta(0);
+      return;
     }
-
-    return () => {
-      if (intervalId) clearInterval(intervalId);
-    };
+    const interval = setInterval(() => {
+      setEta((prev) => Math.max(5, prev - 1));
+    }, 60000); // stable 1-minute countdown down to 5 mins minimum
+    return () => clearInterval(interval);
   }, [currentStep]);
 
   const activeStepObj = STEPS.find((s) => s.status === currentStep) || STEPS[0];

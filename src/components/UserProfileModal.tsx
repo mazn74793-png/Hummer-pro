@@ -550,58 +550,68 @@ export default function UserProfileModal({
                       const orderDate = new Date(ord.createdAt).toLocaleDateString(isRtl ? 'ar-EG' : 'en-US', { month: 'short', day: 'numeric' });
                       
                       // Status styling and translations
-                      let statusText = 'مستلم';
-                      let statusColor = 'bg-zinc-500/10 text-zinc-650';
+                      let statusText = isRtl ? 'تم استلام الأوردر وهو في الانتظار حالياً ⏳' : 'Order Received & Pending ⏳';
+                      let statusColor = 'bg-zinc-100 border border-zinc-200 text-zinc-655 text-zinc-700 font-extrabold';
                       if (ord.status === 'cooking') {
                         statusText = isRtl ? 'نار الطبخ 🔥' : 'Cooking';
-                        statusColor = 'bg-amber-500/10 text-amber-650 border border-amber-300/30';
+                        statusColor = 'bg-amber-500/10 text-amber-655 text-amber-700 border border-amber-305/30 border-amber-300/30 font-black';
                       } else if (ord.status === 'wrapping') {
                         statusText = isRtl ? 'تغليف دبل 📦' : 'Wrapping';
-                        statusColor = 'bg-blue-500/10 text-blue-650 border border-blue-400/30';
+                        statusColor = 'bg-blue-500/10 text-blue-655 text-blue-700 border border-blue-405/30 border-blue-400/30 font-black';
                       } else if (ord.status === 'delivering') {
                         statusText = isRtl ? 'بالطريق مع الطيار 🏍️' : 'In Transit';
-                        statusColor = 'bg-red-500/10 text-red-650 border border-red-300/30';
+                        statusColor = 'bg-red-500/10 text-red-655 text-red-705 text-red-600 border border-red-305/30 border-red-300/30 animate-pulse font-black';
                       } else if (ord.status === 'completed') {
-                        statusText = isRtl ? 'تم التوصيل بنجاح' : 'Completed';
-                        statusColor = 'bg-green-600/10 text-green-600 border border-green-300/30 font-black';
+                        statusText = isRtl ? 'تم التوصيل بنجاح ✅' : 'Completed';
+                        statusColor = 'bg-green-600/10 text-green-655 text-green-600 border border-green-305/30 border-green-300/30 font-black';
                       }
 
                       return (
-                        <div key={ord.id} className="bg-white border border-zinc-200 rounded-2xl p-3.5 space-y-2 relative shadow-xs">
+                        <div key={ord.id} className="bg-white border border-zinc-200 rounded-2xl p-3.5 space-y-2.5 relative shadow-sm hover:border-zinc-300 transition-colors">
                           {/* Top Row with ID and Status */}
                           <div className="flex justify-between items-center gap-2">
-                            <span className={`px-2 py-0.5 rounded-md text-[9px] font-black ${statusColor}`}>
+                            <span className={`px-2.5 py-1 rounded-lg text-[10px] ${statusColor}`}>
                               {statusText}
                             </span>
                             <div className="text-right">
                               <span className="font-mono font-black text-xs text-zinc-950">#{ord.id.slice(0, 8)}</span>
-                              <span className="text-[9px] text-zinc-400 font-bold block mt-0.5">{orderDate} - {orderTime}</span>
+                              <span className="text-[9px] text-zinc-450 text-zinc-400 font-bold block mt-0.5">{orderDate} - {orderTime}</span>
                             </div>
                           </div>
 
                           {/* Items summary */}
-                          <div className="text-[10px] text-zinc-500 font-bold overflow-hidden text-ellipsis line-clamp-1">
+                          <div className="text-[10px] text-zinc-550 text-zinc-500 font-bold overflow-hidden text-ellipsis line-clamp-1 text-right">
                             {ord.items.map((it: any) => `${it.quantity}x ${isRtl ? it.nameAr : it.nameEn}`).join(' - ')}
                           </div>
 
                           {/* Price and assigned Rider details */}
-                          <div className="flex justify-between items-center gap-4 text-xs border-t border-zinc-100 pt-2 mt-1.5">
+                          <div className="flex justify-between items-center gap-4 text-xs border-t border-zinc-100 pt-2.5 mt-1.5">
                             {ord.riderName ? (
                               <div className="flex items-center gap-1 text-[10px] text-amber-600 font-black">
                                 <span>{isRtl ? `الطيار: ${ord.riderName}` : `Rider: ${ord.riderName}`}</span>
                               </div>
                             ) : (
-                              <span className="text-[9px] text-zinc-400 font-bold">{isRtl ? 'جاري تجهيز الطباخ' : 'Kitchen prep...'}</span>
+                              <span className="text-[9px] text-zinc-400 font-bold">{isRtl ? 'جاري تجهيز طلبك في الفرن 🧑‍🍳' : 'Preparing...'}</span>
                             )}
                             <div className="flex items-center gap-2">
-                              <span className="font-mono font-black text-zinc-900">{ord.finalTotal} ج.م</span>
-                              {ord.status !== 'completed' && (
+                              <span className="font-mono font-black text-zinc-900 bg-zinc-100 px-2 py-0.5 rounded-md text-[11px]">{ord.totalPrice || ord.finalTotal} ج.م</span>
+                              {ord.status !== 'completed' ? (
                                 <button
                                   type="button"
                                   onClick={() => onTrackOrder(ord)}
-                                  className="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded-lg text-[9px] font-black transition active:scale-95 cursor-pointer shadow-xs"
+                                  className="px-3.5 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-[10px] font-black transition active:scale-95 cursor-pointer shadow-md shadow-red-550/10 flex items-center gap-1 text-right"
                                 >
-                                  {isRtl ? 'متابعة لايف' : 'Track Live'}
+                                  <span className="w-1.5 h-1.5 bg-white rounded-full animate-ping shrink-0" />
+                                  <span>{isRtl ? 'تتبع لايف 🗺️' : 'Track Status 🗺️'}</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() => onTrackOrder(ord)}
+                                  className="px-2.5 py-1 bg-zinc-100 hover:bg-zinc-200 text-zinc-600 hover:text-zinc-900 rounded-lg text-[9px] font-bold transition cursor-pointer"
+                                  title={isRtl ? 'عرض تفاصيل الطلب' : 'Open Order details'}
+                                >
+                                  {isRtl ? 'الفاتورة 🧾' : 'Receipt 🧾'}
                                 </button>
                               )}
                             </div>
