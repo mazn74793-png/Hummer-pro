@@ -120,16 +120,29 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
             
             {/* Countdown Block */}
             <div className="p-4 bg-white rounded-2xl border border-zinc-200 flex flex-col justify-center items-center text-center order-2 md:order-none">
-              <span className="text-[10px] text-zinc-400 font-black tracking-wider block mb-1">
-                {isRtl ? 'الوقت المتبقي المقدر للوصول:' : 'ESTIMATED ARRIVAL TIME:'}
-              </span>
-              <p className="text-3xl font-display font-black text-red-600 tracking-wider">
-                {currentStep === 'completed' ? '00' : eta}{' '}
-                <span className="text-xs font-sans text-zinc-400">
-                  {isRtl ? 'دقيقة' : 'Mins'}
-                </span>
-              </p>
-              <div className="mt-2 text-[10px] text-zinc-650 font-black bg-zinc-50 px-3 py-1 bg-zinc-100 rounded-full border border-zinc-200 flex items-center gap-1.5 justify-center font-mono">
+              {order.scheduledDeliveryTime ? (
+                <>
+                  <span className="text-[10px] text-zinc-400 font-black tracking-wider block mb-1">
+                    {isRtl ? '⏱️ موعد التوصيل المجدول والمستهدف:' : '⏱️ TARGET SCHEDULED TIME:'}
+                  </span>
+                  <p className="text-sm font-sans font-black text-red-650 text-red-600 px-2 py-1.5 bg-red-50 rounded-xl border border-red-100 mb-2">
+                    {order.scheduledDeliveryTime}
+                  </p>
+                </>
+              ) : (
+                <>
+                  <span className="text-[10px] text-zinc-400 font-black tracking-wider block mb-1">
+                    {isRtl ? 'الوقت المتبقي المقدر للوصول:' : 'ESTIMATED ARRIVAL TIME:'}
+                  </span>
+                  <p className="text-3xl font-display font-black text-red-600 tracking-wider">
+                    {currentStep === 'completed' ? '00' : eta}{' '}
+                    <span className="text-xs font-sans text-zinc-400">
+                      {isRtl ? 'دقيقة' : 'Mins'}
+                    </span>
+                  </p>
+                </>
+              )}
+              <div className="mt-2 text-[10px] text-zinc-650 font-black bg-zinc-100 rounded-full border border-zinc-200 flex items-center gap-1.5 justify-center font-mono px-3 py-1">
                 <Truck className="w-3 h-3 text-red-600" />
                 <span>
                   {isRtl ? `كابتن التوصيل: ${order.captainName}` : `Delivery Agent: ${order.captainName}`}

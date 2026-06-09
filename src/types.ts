@@ -77,6 +77,7 @@ export interface OrderState {
   createdAt: string;
   estimatedMinutes: number;
   captainName: string;
+  scheduledDeliveryTime?: string;
   userId?: string;
   riderId?: string;
   riderName?: string;

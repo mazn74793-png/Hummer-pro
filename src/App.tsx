@@ -212,6 +212,25 @@ export default function App() {
   // Real-time Order Alert sound trackers
   const knownOrderIdsRef = useRef<Set<string>>(new Set());
   const isInitialOrdersLoadRef = useRef<boolean>(true);
+  const lastActiveOrderStatusRef = useRef<string | undefined>(undefined);
+
+  // Dynamic authorized admin emails list
+  const [authorizedAdmins, setAuthorizedAdmins] = useState<string[]>([]);
+
+  // Listen to authorized admins in Firestore
+  useEffect(() => {
+    const unsubAdmins = onSnapshot(
+      collection(db, 'admins'),
+      (snapshot) => {
+        const emailList = snapshot.docs.map(doc => doc.id.toLowerCase().trim());
+        setAuthorizedAdmins(emailList);
+      },
+      (err) => {
+        console.warn('Could not load dynamic admin emails:', err);
+      }
+    );
+    return unsubAdmins;
+  }, []);
 
   // Set up real-time Firebase Auth listener
   useEffect(() => {
@@ -225,7 +244,8 @@ export default function App() {
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
 
-    const isAdmin = isAdminOpen || currentUser?.email === 'motaem23y@gmail.com';
+    const isRealAdmin = currentUser?.email === 'motaem23y@gmail.com' || (currentUser?.email && authorizedAdmins.includes(currentUser.email.toLowerCase().trim()));
+    const isAdmin = isAdminOpen || isRealAdmin;
 
     if (isAdmin) {
       // 1. Admin reads all riders with secure error handling
@@ -427,6 +447,55 @@ export default function App() {
     };
   }, [activeOrder]);
 
+  // Push Notifications when tracking order's status transitions
+  useEffect(() => {
+    if (activeOrder && activeOrder.id) {
+      const currentStatus = activeOrder.status;
+      const lastStatus = lastActiveOrderStatusRef.current;
+      
+      if (lastStatus && lastStatus !== currentStatus) {
+        if (typeof Notification !== 'undefined') {
+          if (Notification.permission === 'default') {
+            Notification.requestPermission();
+          }
+          
+          if (Notification.permission === 'granted') {
+            const statusLabelsAr: Record<string, string> = {
+              'received': 'تم استلامه بنجاح 🎟️',
+              'cooking': 'يتم تحضيره وطهيه بالمطبخ الآن 👨‍🍳',
+              'wrapping': 'يتم تغليفه وترتيبه بالبوكس المعقم 🎁',
+              'delivering': 'خرج مع دليفري هامر السريع في الطريق إليك! 🏍️',
+              'completed': 'تم توصيل الطلب بالهناء والشفاء! ❤️'
+            };
+            const statusLabelsEn: Record<string, string> = {
+              'received': 'Received 🎟️',
+              'cooking': 'Cooking in Kitchen 👨‍🍳',
+              'wrapping': 'Packaging with Care 🎁',
+              'delivering': 'Out for Delivery on the road! 🏍️',
+              'completed': 'Delivered successfully! ❤️'
+            };
+            
+            const label = lang === 'ar' ? (statusLabelsAr[currentStatus] || currentStatus) : (statusLabelsEn[currentStatus] || currentStatus);
+            
+            try {
+              new Notification(lang === 'ar' ? 'تحديث حالة أوردر هامر 🍔' : 'Hummer Order Status Update 🍔', {
+                body: `${lang === 'ar' ? 'أوردرك الآن أصبح:' : 'Your order is now:'} ${label}`,
+                icon: (siteSettings.logoUrl && siteSettings.logoUrl !== 'local-db:logoUrl') ? siteSettings.logoUrl : undefined,
+                tag: `hummer-order-idx-${activeOrder.id}`,
+                requireInteraction: true
+              });
+            } catch (err) {
+              console.warn('Native alert notification failed:', err);
+            }
+          }
+        }
+      }
+      lastActiveOrderStatusRef.current = currentStatus;
+    } else {
+      lastActiveOrderStatusRef.current = undefined;
+    }
+  }, [activeOrder, lang, siteSettings.logoUrl]);
+
   // Load large media assets from IndexedDB asynchronously on startup to circumvent localstorage limits
   useEffect(() => {
     const resolveLargeAssetReferences = async () => {
@@ -501,6 +570,30 @@ export default function App() {
       await deleteDoc(doc(db, 'riders', id));
     } catch (err) {
       console.error('Error deleting rider from Firestore:', err);
+    }
+  };
+
+  const handleAddAdmin = async (email: string) => {
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail) return;
+    try {
+      await setDoc(doc(db, 'admins', cleanEmail), {
+        email: cleanEmail,
+        addedBy: currentUser?.email || 'motaem23y@gmail.com',
+        createdAt: new Date().toISOString()
+      });
+    } catch (err) {
+      console.error('Error adding direct admin:', err);
+    }
+  };
+
+  const handleDeleteAdmin = async (email: string) => {
+    const cleanEmail = email.toLowerCase().trim();
+    if (!cleanEmail) return;
+    try {
+      await deleteDoc(doc(db, 'admins', cleanEmail));
+    } catch (err) {
+      console.error('Error deleting direct admin:', err);
     }
   };
 
@@ -737,6 +830,7 @@ export default function App() {
     deliveryAddress: string;
     paymentMethod: 'cash' | 'card';
     items: CartItem[];
+    scheduledDeliveryTime?: string;
   }) => {
     let discountVal = 0;
     const subtotal = orderDetails.items.reduce((sum, item) => sum + item.pricePerUnit * item.quantity, 0);
@@ -769,7 +863,8 @@ export default function App() {
       createdAt: new Date().toISOString(),
       estimatedMinutes: Math.floor(Math.random() * 10 + 35), // 35 - 45 mins
       captainName,
-      userId: currentUser?.uid || 'guest'
+      userId: currentUser?.uid || 'guest',
+      scheduledDeliveryTime: orderDetails.scheduledDeliveryTime
     };
 
     setJustPlacedOrder(placedOrder);
@@ -832,6 +927,9 @@ export default function App() {
         onUpdateRiderStatus={handleUpdateRiderStatus}
         onAssignRiderToOrder={handleAssignRiderToOrder}
         currentUser={currentUser}
+        authorizedAdmins={authorizedAdmins}
+        onAddAdmin={handleAddAdmin}
+        onDeleteAdmin={handleDeleteAdmin}
       />
     );
   }

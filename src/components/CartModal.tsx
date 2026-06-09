@@ -20,6 +20,7 @@ interface CartModalProps {
     deliveryAddress: string;
     paymentMethod: 'cash' | 'card';
     items: CartItem[];
+    scheduledDeliveryTime?: string;
   }) => void;
   lang: 'ar' | 'en';
   couponCodeFromWheel?: string;
@@ -51,6 +52,11 @@ export default function CartModal({
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [showCheckoutForm, setShowCheckoutForm] = useState(false);
+  
+  // Scheduled Delivery States
+  const [deliveryMode, setDeliveryMode] = useState<'now' | 'scheduled'>('now');
+  const [scheduledDay, setScheduledDay] = useState<'today' | 'tomorrow'>('today');
+  const [scheduledTime, setScheduledTime] = useState<string>('08:00 PM');
   
   // Validation errors
   const [errors, setErrors] = useState<{ name?: string; phone?: string; address?: string }>({});
@@ -262,12 +268,17 @@ export default function CartModal({
       }
     }
 
+    const finalScheduledTime = deliveryMode === 'scheduled'
+      ? `${scheduledDay === 'today' ? (isRtl ? 'اليوم' : 'Today') : (isRtl ? 'غداً' : 'Tomorrow')} - ${scheduledTime}`
+      : undefined;
+
     onCheckout({
       customerName: customerName.trim(),
       phone: phone.trim(),
       deliveryAddress: finalAddress,
       paymentMethod,
-      items: cartItems
+      items: cartItems,
+      scheduledDeliveryTime: finalScheduledTime
     });
 
     setShowCheckoutForm(false);
@@ -642,6 +653,101 @@ export default function CartModal({
                         </div>
                       </motion.div>
                     )}
+                  </div>
+
+                  {/* Scheduled Delivery Section */}
+                  <div className="space-y-2 text-right pt-2 border-t border-zinc-150">
+                    <span className="text-[10px] font-black text-zinc-400 block uppercase tracking-wide">
+                      {isRtl ? '⏱️ وقت وتوقيت التوصيل المفضل:' : '⏱️ Preferred Delivery Timing:'}
+                    </span>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeliveryMode('now');
+                        }}
+                        className={`p-2.5 rounded-xl text-xs font-black border text-center cursor-pointer transition-all duration-150 ${
+                          deliveryMode === 'now'
+                            ? 'border-red-600 bg-red-50 text-red-600 shadow-xs'
+                            : 'border-zinc-200 bg-white text-zinc-500 hover:text-black font-bold'
+                        }`}
+                      >
+                        {isRtl ? '⚡ فوري (بأسرع وقت)' : '⚡ Immediate Now'}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setDeliveryMode('scheduled');
+                        }}
+                        className={`p-2.5 rounded-xl text-xs font-black border text-center cursor-pointer transition-all duration-150 ${
+                          deliveryMode === 'scheduled'
+                            ? 'border-red-600 bg-red-50 text-red-600 shadow-xs'
+                            : 'border-zinc-200 bg-white text-zinc-500 hover:text-black font-bold'
+                        }`}
+                      >
+                        {isRtl ? '📅 جدولة وقت لاحق' : '📅 Schedule for later'}
+                      </button>
+                    </div>
+
+                    <AnimatePresence>
+                      {deliveryMode === 'scheduled' && (
+                        <motion.div
+                          initial={{ opacity: 0, height: 0 }}
+                          animate={{ opacity: 1, height: 'auto' }}
+                          exit={{ opacity: 0, height: 0 }}
+                          className="space-y-2 bg-zinc-50 border border-zinc-200 p-3 rounded-2xl overflow-hidden"
+                        >
+                          {/* Choose Day Toggle */}
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setScheduledDay('today')}
+                              className={`p-2 rounded-xl text-[11px] font-black text-center cursor-pointer border ${
+                                scheduledDay === 'today'
+                                  ? 'bg-zinc-900 border-zinc-900 text-white shadow-xs'
+                                  : 'bg-white border-zinc-200 text-zinc-650 font-bold'
+                              }`}
+                            >
+                              {isRtl ? 'اليوم (Today)' : 'Today'}
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setScheduledDay('tomorrow')}
+                              className={`p-2 rounded-xl text-[11px] font-black text-center cursor-pointer border ${
+                                scheduledDay === 'tomorrow'
+                                  ? 'bg-zinc-900 border-zinc-900 text-white shadow-xs'
+                                  : 'bg-white border-zinc-200 text-zinc-650 font-bold'
+                              }`}
+                            >
+                              {isRtl ? 'غداً (Tomorrow)' : 'Tomorrow'}
+                            </button>
+                          </div>
+
+                          {/* Choose Hour Slot Dropdown */}
+                          <div className="space-y-1">
+                            <label className="text-[9px] font-black text-zinc-400 block">{isRtl ? 'اختر الفترة الزمنية المناسبة:' : 'Select preferred timeframe:'}</label>
+                            <select
+                              value={scheduledTime}
+                              onChange={(e) => setScheduledTime(e.target.value)}
+                              className="w-full text-right p-2.5 bg-white text-zinc-950 rounded-xl text-xs font-black border border-zinc-200 outline-none focus:border-red-650"
+                            >
+                              <option value="12:00 PM - 01:00 PM">12:00 PM - 01:00 PM</option>
+                              <option value="01:00 PM - 02:00 PM">01:00 PM - 02:00 PM</option>
+                              <option value="02:00 PM - 03:00 PM">02:00 PM - 03:00 PM</option>
+                              <option value="03:00 PM - 04:00 PM">03:00 PM - 04:00 PM</option>
+                              <option value="04:00 PM - 05:00 PM">04:00 PM - 05:00 PM</option>
+                              <option value="05:00 PM - 06:00 PM">05:00 PM - 06:00 PM</option>
+                              <option value="06:00 PM - 07:00 PM">06:00 PM - 07:00 PM</option>
+                              <option value="07:00 PM - 08:00 PM">07:00 PM - 08:00 PM</option>
+                              <option value="08:00 PM - 09:00 PM">08:00 PM - 09:00 PM</option>
+                              <option value="09:00 PM - 10:00 PM">09:00 PM - 10:00 PM</option>
+                              <option value="10:00 PM - 11:00 PM">10:00 PM - 11:00 PM</option>
+                              <option value="11:00 PM - 12:00 AM">11:00 PM - 12:00 AM</option>
+                            </select>
+                          </div>
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
                   </div>
 
                   {/* Payment method */}

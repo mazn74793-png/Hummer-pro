@@ -9,13 +9,19 @@ service cloud.firestore {
 
     function isAdmin() {
       return isSignedIn() && (
-        (request.auth.token.email_verified == true && request.auth.token.email == "motaem23y@gmail.com") ||
-        (request.auth.token.email == "motaem23y@gmail.com")
+        (request.auth.token.email == "motaem23y@gmail.com") ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.token.email))
       );
     }
 
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Admins Collection
+    match /admins/{adminEmail} {
+      allow read: if true;
+      allow write: if isAdmin();
     }
 
     // Users Collection

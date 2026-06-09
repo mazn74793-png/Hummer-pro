@@ -1,5 +1,17 @@
 {
   "entities": {
+    "Admin": {
+      "title": "Authorized Admin",
+      "description": "Store admin by email address",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string" },
+        "addedBy": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "createdAt"]
+    },
     "User": {
       "title": "User Profile",
       "description": "User account information, registered phone, and saved shipping addresses",
@@ -55,6 +67,10 @@
     }
   },
   "firestore": {
+    "admins/{adminId}": {
+      "schema": "Admin",
+      "description": "Authorized administrators list"
+    },
     "users/{userId}": {
       "schema": "User",
       "description": "User profile metadata, stored on registration/login"

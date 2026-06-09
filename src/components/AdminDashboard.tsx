@@ -2,9 +2,13 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Check, Plus, Trash2, Edit2, Upload, AlertCircle, Maximize2, Minimize2, 
   Settings, Loader2, ChefHat, Bell, Wifi, ArrowDown, ArrowUp, RefreshCw, Eye,
-  MapPin, Edit, EyeOff, LayoutTemplate, Building
+  MapPin, Edit, EyeOff, LayoutTemplate, Building, TrendingUp, Users, Calendar, Award
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { 
+  BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
+  PieChart, Pie, Cell, Legend, LineChart, Line, CartesianGrid 
+} from 'recharts';
 import { MenuItem, OrderState, OrderStep, FoodCategory, SizeOption, Branch, SiteSettings } from '../types';
 
 interface AdminDashboardProps {
@@ -27,6 +31,9 @@ interface AdminDashboardProps {
   onUpdateRiderStatus: (riderId: string, status: 'here' | 'out') => void;
   onAssignRiderToOrder: (orderId: string, riderId: string) => void;
   currentUser?: any;
+  authorizedAdmins?: string[];
+  onAddAdmin?: (email: string) => Promise<void>;
+  onDeleteAdmin?: (email: string) => Promise<void>;
 }
 
 export default function AdminDashboard({
@@ -48,12 +55,15 @@ export default function AdminDashboard({
   onDeleteRider,
   onUpdateRiderStatus,
   onAssignRiderToOrder,
-  currentUser
+  currentUser,
+  authorizedAdmins = [],
+  onAddAdmin,
+  onDeleteAdmin
 }: AdminDashboardProps) {
   const isRtl = lang === 'ar';
   
-  // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders'
-  const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders'>('orders');
+  // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'
+  const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'>('orders');
 
   
   // Fullscreen state
@@ -101,6 +111,10 @@ export default function AdminDashboard({
   const [sizeNameAr, setSizeNameAr] = useState('');
   const [sizeNameEn, setSizeNameEn] = useState('');
   const [sizeExtraPrice, setSizeExtraPrice] = useState<number>(0);
+
+  // Admin expansion form states
+  const [newAdminEmail, setNewAdminEmail] = useState('');
+  const [isAdminSaving, setIsAdminSaving] = useState(false);
 
   // Rider creation form states
   const [newRiderName, setNewRiderName] = useState('');
@@ -214,6 +228,71 @@ export default function AdminDashboard({
       toastNotification(isRtl ? 'تم حذف الفرع بنجاح.' : 'Branch deleted successfully.');
     }
   };
+
+  // Real-time sales and popular dishes aggregations
+  const analyticsData = React.useMemo(() => {
+    const daily: Record<string, { date: string; revenue: number; count: number }> = {};
+    const monthly: Record<string, { month: string; revenue: number; count: number }> = {};
+    const itemSells: Record<string, { name: string; count: number }> = {};
+
+    orders.forEach((o) => {
+      const cost = Number(o.totalPrice) || 0;
+      let dateStr = 'N/A';
+      let monthStr = 'N/A';
+      try {
+        if (o.createdAt) {
+          const d = new Date(o.createdAt);
+          if (!isNaN(d.getTime())) {
+            dateStr = d.toISOString().split('T')[0];
+            monthStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
+          } else {
+            // fallback parser
+            dateStr = o.createdAt.split(' ')[0] || 'N/A';
+            monthStr = o.createdAt.substring(0, 7) || 'N/A';
+          }
+        }
+      } catch (err) {
+        console.warn(err);
+      }
+
+      if (!daily[dateStr]) {
+        daily[dateStr] = { date: dateStr, revenue: 0, count: 0 };
+      }
+      daily[dateStr].revenue += cost;
+      daily[dateStr].count += 1;
+
+      if (!monthly[monthStr]) {
+        monthly[monthStr] = { month: monthStr, revenue: 0, count: 0 };
+      }
+      monthly[monthStr].revenue += cost;
+      monthly[monthStr].count += 1;
+
+      if (Array.isArray(o.items)) {
+        o.items.forEach((item) => {
+          const dishName = isRtl ? item.nameAr : item.nameEn;
+          if (!itemSells[dishName]) {
+            itemSells[dishName] = { name: dishName, count: 0 };
+          }
+          itemSells[dishName].count += Number(item.quantity) || 0;
+        });
+      }
+    });
+
+    const dailyList = Object.values(daily).sort((a, b) => a.date.localeCompare(b.date)).slice(-10);
+    const monthlyList = Object.values(monthly).sort((a, b) => a.month.localeCompare(b.month)).slice(-6);
+    const topItemsList = Object.values(itemSells).sort((a, b) => b.count - a.count).slice(0, 5);
+
+    const totalRevenue = orders.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+    const totalCompletedCount = orders.filter(o => o.status === 'completed').length;
+
+    return {
+      dailyList,
+      monthlyList,
+      topItemsList,
+      totalRevenue,
+      totalCompletedCount
+    };
+  }, [orders, isRtl]);
 
   // Order alerts sound & visual trackers
   const [lastOrderCount, setLastOrderCount] = useState(orders.length);
@@ -715,6 +794,30 @@ export default function AdminDashboard({
                 {riders.length}
               </span>
             </button>
+
+            <button
+              onClick={() => setActiveSubTab('analytics')}
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
+                activeSubTab === 'analytics'
+                  ? 'bg-red-600 text-white shadow'
+                  : 'bg-zinc-800/40 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }`}
+            >
+              <span>{isRtl ? 'تقارير المبيعات والأرباح 📊' : 'Sales Analytics Reports 📊'}</span>
+              <TrendingUp className="w-4 h-4 text-zinc-400" />
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('admins')}
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
+                activeSubTab === 'admins'
+                  ? 'bg-red-600 text-white shadow'
+                  : 'bg-zinc-800/40 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }`}
+            >
+              <span>{isRtl ? 'صلاحيات الإدارة والمديرين 🔑' : 'Manage Admin Credentials 🔑'}</span>
+              <Users className="w-4 h-4 text-zinc-400" />
+            </button>
           </div>
 
           {/* Setup Cloudinary Credentials Mini Hint Summary card */}
@@ -931,6 +1034,17 @@ export default function AdminDashboard({
                                   {order.paymentMethod === 'cash' ? (isRtl ? 'كاش مع المندوب 💵' : 'Cash on delivery') : (isRtl ? 'فيزا مع المندوب 💳' : 'Card on delivery')}
                                 </span>
                               </p>
+
+                              {order.scheduledDeliveryTime ? (
+                                <p className="text-[10px] bg-red-950/40 border border-red-900/60 p-1.5 rounded-lg text-red-400 font-black mt-1.5 inline-block">
+                                  ⏳ {isRtl ? '⏱️ وقت التوصيل المجدول والمستقبلي:' : '⏱️ Scheduled Future Delivery:'}{' '}
+                                  <span className="underline font-sans text-xs text-white">{order.scheduledDeliveryTime}</span>
+                                </p>
+                              ) : (
+                                <p className="text-[10px] text-green-500 font-bold mt-1 inline-block">
+                                  ⚡ {isRtl ? '⚡ طلب فوري (بأسرع وقت)' : '⚡ Express immediate delivery'}
+                                </p>
+                              )}
                             </div>
 
                             {/* Dish items ordered */}
@@ -2285,6 +2399,154 @@ export default function AdminDashboard({
                           <h5 className="font-sans font-black text-white text-xs">{r.name}</h5>
                           <p className="text-[10px] text-zinc-500 font-mono font-bold mt-0.5">{r.phone}</p>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeSubTab === 'analytics' && (
+            <div className="space-y-6 text-right" id="subtab-analytics">
+              {/* Total Stats Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-1">
+                  <div className="flex items-center justify-between">
+                    <TrendingUp className="w-5 h-5 text-green-500 animate-pulse" />
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{isRtl ? 'إجمالي المبيعات' : 'Total Revenue'}</span>
+                  </div>
+                  <p className="text-2xl font-black text-white font-mono">{analyticsData.totalRevenue.toLocaleString()} <span className="text-xs text-zinc-400">{isRtl ? 'ج.م' : 'EGP'}</span></p>
+                </div>
+                <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Calendar className="w-5 h-5 text-amber-500" />
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{isRtl ? 'إجمالي عدد الطلبات' : 'Total Orders Placed'}</span>
+                  </div>
+                  <p className="text-2xl font-black text-white font-mono">{orders.length} <span className="text-xs text-zinc-400">{isRtl ? 'أوردر' : 'Orders'}</span></p>
+                </div>
+                <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-1">
+                  <div className="flex items-center justify-between">
+                    <Award className="w-5 h-5 text-red-500" />
+                    <span className="text-[10px] text-zinc-400 font-bold uppercase tracking-widest">{isRtl ? 'طلبات مكتملة التوصيل' : 'Completed Deliveries'}</span>
+                  </div>
+                  <p className="text-2xl font-black text-white font-mono">{analyticsData.totalCompletedCount} <span className="text-xs text-zinc-400">{isRtl ? 'ناجح' : 'Done'}</span></p>
+                </div>
+              </div>
+
+              {/* Charts grid */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Daily Revenue Chart */}
+                <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-4">
+                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">{isRtl ? '📈 الإيرادات اليومية (آخر ١٠ أيام)' : 'Daily Sales Trend'}</h4>
+                  {analyticsData.dailyList.length === 0 ? (
+                    <div className="h-64 flex items-center justify-center text-zinc-500 text-xs font-bold">{isRtl ? 'لا توجد مبيعات متوفرة للرسم' : 'No sales registered yet'}</div>
+                  ) : (
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart data={analyticsData.dailyList}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                          <XAxis dataKey="date" stroke="#666" fontSize={10} tickLine={false} />
+                          <YAxis stroke="#666" fontSize={10} tickLine={false} />
+                          <Tooltip contentStyle={{ backgroundColor: '#18181b', stroke: '#333', border: '1px solid #222', color: '#fff' }} />
+                          <Bar dataKey="revenue" fill="#dc2626" radius={[4, 4, 0, 0]} name={isRtl ? 'الإيرادات اليومية' : 'Revenue'} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+
+                {/* Popular Dishes Bestsellers Chart */}
+                <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-4">
+                  <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">{isRtl ? '⭐ الأصناف الأكثر مبيعاً (كميات مطلوبة)' : 'Bestsellers Dishes'}</h4>
+                  {analyticsData.topItemsList.length === 0 ? (
+                    <div className="h-64 flex items-center justify-center text-zinc-500 text-xs font-bold">{isRtl ? 'لا توجد بيانات أصناف متاحة' : 'No menu item sold yet'}</div>
+                  ) : (
+                    <div className="h-64 w-full">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <BarChart layout="vertical" data={analyticsData.topItemsList}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#222" />
+                          <XAxis type="number" stroke="#666" fontSize={10} tickLine={false} />
+                          <YAxis type="category" dataKey="name" stroke="#fff" fontSize={9} tickLine={false} width={100} />
+                          <Tooltip contentStyle={{ backgroundColor: '#18181b', stroke: '#333', border: '1px solid #222', color: '#fff' }} />
+                          <Bar dataKey="count" fill="#fbbf24" radius={[0, 4, 4, 0]} name={isRtl ? 'العدد المبيوع' : 'Quantity Sold'} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeSubTab === 'admins' && (
+            <div className="space-y-6 text-right" id="subtab-admins">
+              {/* Add Admin Form Card */}
+              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-4">
+                <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">{isRtl ? '🔑 إضافة أدمن جديد بالنظام' : 'Register New Manager Credentials'}</h4>
+                <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-end">
+                  <button
+                    onClick={async () => {
+                      const email = newAdminEmail.trim();
+                      if (!email) {
+                        alert(isRtl ? 'الرجاء إدخال إيميل بالكامل أولاً!' : 'Please enter email first!');
+                        return;
+                      }
+                      setIsAdminSaving(true);
+                      try {
+                        if (onAddAdmin) {
+                          await onAddAdmin(email);
+                          setNewAdminEmail('');
+                          toastNotification(isRtl ? 'تم إضافة الأدمن بنجاح! 🎉' : 'New Admin registered successfully! 🎉');
+                        }
+                      } catch (err) {
+                        console.error(err);
+                      } finally {
+                        setIsAdminSaving(false);
+                      }
+                    }}
+                    disabled={isAdminSaving}
+                    className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-2 justify-center shrink-0 disabled:opacity-50"
+                  >
+                    {isAdminSaving ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Plus className="w-3.5 h-3.5" />}
+                    <span>{isRtl ? 'إضافة وتثبيت كمسؤول' : 'Register Admin'}</span>
+                  </button>
+                  <input
+                    type="email"
+                    required
+                    value={newAdminEmail}
+                    onChange={(e) => setNewAdminEmail(e.target.value)}
+                    placeholder={isRtl ? 'اكتب إيميل غوغل للأدمن الجديد (مثال: master@gmail.com)' : 'Enter google email for new admin...'}
+                    className="flex-1 bg-zinc-900 border border-zinc-800 text-white p-2.5 rounded-xl text-xs font-bold outline-none focus:border-red-600 text-right"
+                  />
+                </div>
+              </div>
+
+              {/* Dynamic Authorized Admins List */}
+              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-4">
+                <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">{isRtl ? '🛡️ قائمة المديرين المعتمدين حالياً:' : 'Active System Administrators List:'}</h4>
+                {authorizedAdmins.length === 0 ? (
+                  <p className="text-xs text-zinc-500 font-bold text-center py-6">
+                    {isRtl ? 'لا يوجد مدراء ديناميكيين مضافين بعد. (الأدمن الأساسي هو المالك)' : 'Only primary system owner registers currently.'}
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {authorizedAdmins.map((admEmail) => (
+                      <div key={admEmail} className="bg-zinc-900 p-3 rounded-2xl border border-zinc-850 flex items-center justify-between text-xs font-mono text-zinc-300">
+                        <button
+                          onClick={async () => {
+                            if (confirm(isRtl ? 'هل تريد سحب صلاحية الأدمن من هذا البريد الإلكتروني؟' : 'Are you sure you want to revoke admin authority?')) {
+                              if (onDeleteAdmin) {
+                                await onDeleteAdmin(admEmail);
+                                toastNotification(isRtl ? 'تم سحب الصلاحيات بنجاح.' : 'Admin authorities revoked.');
+                              }
+                            }
+                          }}
+                          className="p-1.5 text-zinc-500 hover:text-red-500 hover:bg-red-500/10 rounded-lg cursor-pointer transition"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </button>
+                        <span className="font-extrabold">{admEmail}</span>
                       </div>
                     ))}
                   </div>
