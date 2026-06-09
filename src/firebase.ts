@@ -1,13 +1,16 @@
 import { initializeApp } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
+import { initializeFirestore, getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
 // Initialize Firebase app with our secure credentials
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth & Firestore with specific Database ID
-export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
+// Initialize Auth & Firestore with specific Database ID and force HTTP long polling to prevent RPC Listen connection warnings 
+export const db = initializeFirestore(app, {
+  experimentalForceLongPolling: true
+}, firebaseConfig.firestoreDatabaseId);
+
 export const auth = getAuth();
 export const googleProvider = new GoogleAuthProvider();
 

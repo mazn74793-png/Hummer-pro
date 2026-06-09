@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Sparkles, Utensils, Search, Flame, MapPin, PhoneCall, Clock, HelpCircle, Gift, CheckCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -54,6 +54,78 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   promoBannerEn: 'Summer Deals! 10% OFF all crepes with code HUMMER10',
   introVideoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41611-large.mp4',
   disableIntro: false,
+};
+
+// High Fidelity Audio Synthesis for premium interactive sounds with 100% reliability (bypasses static files)
+export const playCheckoutSuccessSound = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    const playTone = (freq: number, start: number, duration: number, vol: number) => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = 'triangle';
+      osc.frequency.setValueAtTime(freq, start);
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(vol, start + 0.1);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+      osc.start(start);
+      osc.stop(start + duration);
+    };
+
+    // Arpeggio rising success chime
+    playTone(523.25, now, 0.5, 0.15); // C5
+    playTone(659.25, now + 0.1, 0.5, 0.15); // E5
+    playTone(783.99, now + 0.2, 0.5, 0.15); // G5
+    playTone(1046.50, now + 0.3, 0.8, 0.2); // C6
+  } catch (err) {
+    console.warn('Audio check-out play error:', err);
+  }
+};
+
+export const playIncomingOrderBell = () => {
+  try {
+    const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+    if (!AudioContextClass) return;
+    const ctx = new AudioContextClass();
+    const now = ctx.currentTime;
+
+    const playBellTone = (freq: number, start: number, duration: number, vol: number) => {
+      const osc1 = ctx.createOscillator();
+      const osc2 = ctx.createOscillator(); // Subharmonic resonance
+      const gain = ctx.createGain();
+
+      osc1.type = 'sine';
+      osc1.frequency.setValueAtTime(freq, start);
+
+      osc2.type = 'triangle';
+      osc2.frequency.setValueAtTime(freq / 2, start); // Deep underlying bell resonance
+
+      gain.gain.setValueAtTime(0, start);
+      gain.gain.linearRampToValueAtTime(vol, start + 0.05);
+      gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+      osc1.connect(gain);
+      osc2.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc1.start(start);
+      osc2.start(start);
+      osc1.stop(start + duration);
+      osc2.stop(start + duration);
+    };
+
+    // Traditional kitchen dynamic double-ring bell
+    playBellTone(880, now, 1.2, 0.3); // High A5
+    playBellTone(880, now + 0.15, 1.5, 0.25); // Repeat ring
+  } catch (err) {
+    console.warn('Incoming admin order audio alert failed:', err);
+  }
 };
 
 export default function App() {
@@ -137,6 +209,10 @@ export default function App() {
   const [activeOrder, setActiveOrder] = useState<OrderState | null>(null);
   const [justPlacedOrder, setJustPlacedOrder] = useState<OrderState | null>(null);
 
+  // Real-time Order Alert sound trackers
+  const knownOrderIdsRef = useRef<Set<string>>(new Set());
+  const isInitialOrdersLoadRef = useRef<boolean>(true);
+
   // Set up real-time Firebase Auth listener
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (usr) => {
@@ -171,6 +247,26 @@ export default function App() {
         (snapshot) => {
           const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
           list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+          let hasNewIncoming = false;
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const id = change.doc.id;
+              if (!knownOrderIdsRef.current.has(id)) {
+                knownOrderIdsRef.current.add(id);
+                if (!isInitialOrdersLoadRef.current) {
+                  hasNewIncoming = true;
+                }
+              }
+            }
+          });
+
+          isInitialOrdersLoadRef.current = false;
+
+          if (hasNewIncoming) {
+            playIncomingOrderBell();
+          }
+
           setOrders(list);
 
           // Update active order if visible
@@ -677,6 +773,7 @@ export default function App() {
     };
 
     setJustPlacedOrder(placedOrder);
+    playCheckoutSuccessSound();
     
     // Write directly to our relational-structured persistent Firestore database
     try {
