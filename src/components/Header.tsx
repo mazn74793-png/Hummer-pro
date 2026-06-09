@@ -29,6 +29,16 @@ export default function Header({
 }: HeaderProps) {
   const isRtl = lang === 'ar';
 
+  const getLogoSrc = (): string => {
+    const url = siteSettings?.logoUrl;
+    if (!url) return defaultLogo;
+    const cleanUrl = url.trim();
+    if (cleanUrl === '' || cleanUrl === 'null' || cleanUrl === 'undefined' || cleanUrl === 'local-db:logoUrl' || cleanUrl.startsWith('local-db:')) {
+      return defaultLogo;
+    }
+    return cleanUrl;
+  };
+
   const [deviceMeta, setDeviceMeta] = useState<{ os: string; type: string; isPhone: boolean }>({
     os: 'PC / Large Screen',
     type: 'Desktop',
@@ -119,7 +129,7 @@ export default function Header({
             <motion.img 
               whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.02 }}
               transition={{ duration: 0.5 }}
-              src={(siteSettings?.logoUrl && siteSettings.logoUrl !== 'local-db:logoUrl') ? siteSettings.logoUrl : defaultLogo}
+              src={getLogoSrc()}
               alt="Hummer Brand Logo"
               referrerPolicy="no-referrer"
               className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl object-contain bg-zinc-950 shadow-lg p-1 cursor-pointer border border-zinc-800"

@@ -348,10 +348,32 @@ export default function App() {
     // 3. Real-time global site settings listener (visible to everyone)
     const unsubGlobalSettings = onSnapshot(
       doc(db, 'settings', 'global'),
-      (snapshot) => {
+      async (snapshot) => {
         if (snapshot.exists()) {
           const remoteSettings = snapshot.data() as SiteSettings;
-          setSiteSettings(prev => ({ ...prev, ...remoteSettings }));
+          let logoUrl = remoteSettings.logoUrl;
+          let introVideoUrl = remoteSettings.introVideoUrl;
+
+          if (logoUrl === 'local-db:logoUrl') {
+            const storedLogo = await getLargeAsset('logoUrl');
+            if (storedLogo) {
+              logoUrl = storedLogo;
+            }
+          }
+
+          if (introVideoUrl === 'local-db:introVideoUrl') {
+            const storedVideo = await getLargeAsset('introVideoUrl');
+            if (storedVideo) {
+              introVideoUrl = storedVideo;
+            }
+          }
+
+          setSiteSettings(prev => ({
+            ...prev,
+            ...remoteSettings,
+            logoUrl: logoUrl || prev.logoUrl,
+            introVideoUrl: introVideoUrl || prev.introVideoUrl
+          }));
         }
       },
       (err) => {
