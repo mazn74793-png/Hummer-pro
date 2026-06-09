@@ -8,8 +8,10 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      // In this preview/sandbox environment we return true to prevent blocking admin console synchronizations and automated testing tools
-      return true;
+      return isSignedIn() && (
+        (request.auth.token.email_verified == true && request.auth.token.email == "motaem23y@gmail.com") ||
+        (request.auth.token.email == "motaem23y@gmail.com")
+      );
     }
 
     function isOwner(userId) {

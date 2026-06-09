@@ -26,6 +26,7 @@ interface AdminDashboardProps {
   onDeleteRider: (riderId: string) => void;
   onUpdateRiderStatus: (riderId: string, status: 'here' | 'out') => void;
   onAssignRiderToOrder: (orderId: string, riderId: string) => void;
+  currentUser?: any;
 }
 
 export default function AdminDashboard({
@@ -46,7 +47,8 @@ export default function AdminDashboard({
   onAddRider,
   onDeleteRider,
   onUpdateRiderStatus,
-  onAssignRiderToOrder
+  onAssignRiderToOrder,
+  currentUser
 }: AdminDashboardProps) {
   const isRtl = lang === 'ar';
   
@@ -736,6 +738,82 @@ export default function AdminDashboard({
         {/* Content Screens Grid */}
         <div className="lg:col-span-9 space-y-6">
           
+          {/* Admin Database Real-time Authorization Alert */}
+          {currentUser?.email !== 'motaem23y@gmail.com' && (
+            <div className="p-4 bg-amber-950/45 border border-amber-800/60 rounded-3xl text-right space-y-3 shadow-md" dir="rtl">
+              <div className="flex items-start gap-2.5">
+                <AlertCircle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5 animate-bounce" />
+                <div className="flex-1 space-y-1">
+                  <h4 className="text-sm font-black text-amber-200 font-sans">
+                    {isRtl ? 'حالة المزامنة السحابية غير مفعلة ⚠️' : 'Cloud Synchronization Off ⚠️'}
+                  </h4>
+                  <p className="text-xs text-amber-300 font-bold leading-relaxed font-sans">
+                    {isRtl 
+                      ? 'أنت تتصفح لوحة التحكم المحلية بالبينات المؤقتة. لمزامنة وتلقي الطلبات حياً (Live) من الهواتف الأخرى والزبائن بجودة واحترافية متكاملة للعمل التجاري، يرجى تسجيل الدخول بحساب المسؤول Google المعتمد (motaem23y@gmail.com).'
+                      : 'You are browsing the local dashboard. To securely sync and receive orders live from other devices in real-time, please sign in with the authorized Admin Google account (motaem23y@gmail.com).'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex justify-end pt-1">
+                <button
+                  type="button"
+                  onClick={async () => {
+                    try {
+                      const { auth, googleProvider } = await import('../firebase');
+                      const { signInWithPopup } = await import('firebase/auth');
+                      const result = await signInWithPopup(auth, googleProvider);
+                      if (result.user.email === 'motaem23y@gmail.com') {
+                        toastNotification(isRtl ? 'تم تسجيل الدخول بنجاح كمدير مسؤول معتمد! 🔥' : 'Authorized Admin Google Login Success! 🔥');
+                      } else {
+                        toastNotification(
+                          isRtl 
+                            ? 'عذراً، هذا الحساب ليس الحساب المسؤول المعتمد (motaem23y@gmail.com)!' 
+                            : 'This email is not the authorized admin email (motaem23y@gmail.com)!'
+                        );
+                      }
+                    } catch (err: any) {
+                      console.error('Admin Dashboard sign in error:', err);
+                      toastNotification(isRtl ? 'فشل تسجيل الدخول، يرجى المحاولة مرة أخرى.' : 'Login failed, please retry.');
+                    }
+                  }}
+                  className="px-4 py-2 bg-amber-600 hover:bg-amber-500 text-zinc-950 hover:text-black rounded-xl text-xs font-black transition active:scale-95 flex items-center gap-2 cursor-pointer shadow-md select-none"
+                >
+                  <svg className="w-4 h-4 shrink-0" viewBox="0 0 24 24">
+                    <path
+                      fill="currentColor"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="currentColor"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span>{isRtl ? 'ربط لوحة التحكم همر سحابياً بالحساب المعتمد 🔑' : 'Sync Hummer Dashboard with Authorized Google Account 🔑'}</span>
+                </button>
+              </div>
+            </div>
+          )}
+
+          {currentUser?.email === 'motaem23y@gmail.com' && (
+            <div className="p-4 bg-green-950/40 border border-green-800/50 rounded-3xl text-right flex flex-col sm:flex-row sm:items-center justify-between gap-3 shadow-xs" dir="rtl">
+              <div className="flex items-center gap-2">
+                <span className="w-2.5 h-2.5 bg-green-500 rounded-full animate-pulse" />
+                <span className="text-xs font-black text-green-300 font-sans">
+                  {isRtl ? '✓ لوحة التحكم متصلة بقاعدة البيانات السحابية الحية (motaem23y@gmail.com)' : '✓ Dashboard fully synced with live cloud database (motaem23y@gmail.com)'}
+                </span>
+              </div>
+              <span className="text-[10px] text-zinc-500 font-bold font-mono">ROLE: AUTHENTICATED_STORE_ADMIN</span>
+            </div>
+          )}
+
           {/* Audio & Alert Banner portal inline */}
           {toastText && (
             <motion.div
