@@ -15,6 +15,8 @@ interface UserProfileModalProps {
   lang: 'ar' | 'en';
   onTrackOrder: (order: any) => void;
   userOrders: any[];
+  isRealAdmin?: boolean;
+  onOpenAdmin?: () => void;
 }
 
 export interface UserProfileData {
@@ -31,7 +33,9 @@ export default function UserProfileModal({
   onClose,
   lang,
   onTrackOrder,
-  userOrders
+  userOrders,
+  isRealAdmin = false,
+  onOpenAdmin
 }: UserProfileModalProps) {
   const isRtl = lang === 'ar';
   const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(auth.currentUser);
@@ -479,6 +483,33 @@ export default function UserProfileModal({
                   </div>
                 )}
               </div>
+
+              {/* Admin Control Dashboard banner trigger for quick access */}
+              {isRealAdmin && onOpenAdmin && (
+                <div className="p-4 bg-red-50 border border-red-205 border-red-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 text-right">
+                  <div className="space-y-1">
+                    <span className="text-[9px] font-black uppercase tracking-wider bg-red-650 bg-red-600 text-white px-2 py-0.5 rounded">
+                      {isRtl ? 'حساب مدير معتمد 🔑' : 'Authorized Admin 🔑'}
+                    </span>
+                    <p className="text-xs text-red-950 font-black">
+                      {isRtl ? 'لقد تم الكشف عن بريدك الإلكتروني كمسؤول معتمد في النظام.' : 'You have access to the dashboard with your email.'}
+                    </p>
+                    <p className="text-[10px] text-zinc-500 font-bold">
+                      {isRtl ? 'يمكنك التحكم بالطلبات، المنيو، كلام الموقع، اللوجو والتقارير فورياً.' : 'Manage layouts, menus, order delivery times, and physical outlets.'}
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => {
+                      onOpenAdmin();
+                      onClose();
+                    }}
+                    className="w-full sm:w-auto px-4 py-2 bg-red-600 hover:bg-red-700 border border-red-700 text-white rounded-xl font-black text-xs transition shadow-md active:scale-95 cursor-pointer flex items-center justify-center gap-1.5 shrink-0"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-white shrink-0 animate-bounce" />
+                    <span>{isRtl ? 'فتح لوحة الإدارة ⚙️' : 'Access Control Panel ⚙️'}</span>
+                  </button>
+                </div>
+              )}
 
               {/* Physical Address Management section */}
               <div className="space-y-3">

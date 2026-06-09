@@ -165,6 +165,27 @@ export default function App() {
     return DEFAULT_SITE_SETTINGS;
   });
 
+  // Dynamically synchronize the browser tab favicon to match the chosen custom siteSettings logo
+  useEffect(() => {
+    let logoUrl = '/logo.png';
+    const currentLogo = siteSettings?.logoUrl;
+    if (currentLogo && currentLogo.trim() !== '' && currentLogo !== 'local-db:logoUrl' && !currentLogo.startsWith('local-db:')) {
+      logoUrl = currentLogo.trim();
+    }
+    
+    // Update all link[rel*='icon'] tags to make logo appear next to site name on browser tab
+    const faviconElements = document.querySelectorAll("link[rel*='icon']");
+    faviconElements.forEach((el) => {
+      el.setAttribute('href', logoUrl);
+    });
+    
+    // Update Apple touch icon as well
+    const appleIcon = document.querySelector("link[rel='apple-touch-icon']");
+    if (appleIcon) {
+      appleIcon.setAttribute('href', logoUrl);
+    }
+  }, [siteSettings?.logoUrl]);
+
   const [branches, setBranches] = useState<Branch[]>(() => {
     const saved = localStorage.getItem('hummer_branches');
     if (saved) {
@@ -217,6 +238,11 @@ export default function App() {
   // Dynamic authorized admin emails list
   const [authorizedAdmins, setAuthorizedAdmins] = useState<string[]>([]);
 
+  const isRealAdmin = !!(
+    currentUser?.email === 'motaem23y@gmail.com' ||
+    (currentUser?.email && authorizedAdmins.includes(currentUser.email.toLowerCase().trim()))
+  );
+
   // Listen to authorized admins in Firestore
   useEffect(() => {
     const unsubAdmins = onSnapshot(
@@ -244,7 +270,6 @@ export default function App() {
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
 
-    const isRealAdmin = currentUser?.email === 'motaem23y@gmail.com' || (currentUser?.email && authorizedAdmins.includes(currentUser.email.toLowerCase().trim()));
     const isAdmin = isAdminOpen || isRealAdmin;
 
     if (isAdmin) {
@@ -419,7 +444,7 @@ export default function App() {
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [currentUser, activeOrder?.id, isAdminOpen]);
+  }, [currentUser, activeOrder?.id, isAdminOpen, isRealAdmin]);
 
   // Sync state modifications live across tabs/views using standard BroadcastChannel
   useEffect(() => {
@@ -972,6 +997,8 @@ export default function App() {
         setActiveTab={setActiveTab}
         siteSettings={siteSettings}
         onOpenProfile={() => setIsProfileOpen(true)}
+        isRealAdmin={isRealAdmin}
+        onOpenAdmin={() => setIsAdminOpen(true)}
       />
 
       {/* 2. Hero Presentation Banner */}
@@ -1376,6 +1403,8 @@ export default function App() {
         onClose={() => setIsProfileOpen(false)}
         lang={lang}
         userOrders={orders.filter(o => o.userId === currentUser?.uid)}
+        isRealAdmin={isRealAdmin}
+        onOpenAdmin={() => setIsAdminOpen(true)}
         onTrackOrder={(order) => {
           setActiveOrder(order);
           setIsProfileOpen(false);

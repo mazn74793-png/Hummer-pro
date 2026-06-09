@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Flame, PhoneCall, Gift, MapPin, Sparkles, Smartphone, Laptop, User } from 'lucide-react';
+import { ShoppingCart, Flame, PhoneCall, Gift, MapPin, Sparkles, Smartphone, Laptop, User, ShieldCheck } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SiteSettings } from '../types';
 import defaultLogo from '../assets/images/hummer_logo_1780839326548.png';
@@ -14,6 +14,8 @@ interface HeaderProps {
   setActiveTab: (tab: string) => void;
   siteSettings: SiteSettings;
   onOpenProfile: () => void;
+  isRealAdmin?: boolean;
+  onOpenAdmin?: () => void;
 }
 
 export default function Header({
@@ -26,6 +28,8 @@ export default function Header({
   setActiveTab,
   siteSettings,
   onOpenProfile,
+  isRealAdmin = false,
+  onOpenAdmin,
 }: HeaderProps) {
   const isRtl = lang === 'ar';
 
