@@ -914,9 +914,6 @@ export default function App() {
       scheduledDeliveryTime: orderDetails.scheduledDeliveryTime
     };
 
-    setJustPlacedOrder(placedOrder);
-    playCheckoutSuccessSound();
-    
     // Write directly to our relational-structured persistent Firestore database
     try {
       await setDoc(doc(db, 'orders', docId), {
@@ -925,12 +922,16 @@ export default function App() {
         riderName: '',
         riderPhone: ''
       });
-    } catch (err) {
+      
+      // Only set success states and empty the basket if database write compiles successfully
+      setJustPlacedOrder(placedOrder);
+      playCheckoutSuccessSound();
+      saveCart([]); // Empty active cart upon ordering!
+      setChosenCouponCode(''); // Clear applied coupon
+    } catch (err: any) {
       console.error('Error saving order to Firestore:', err);
+      throw err;
     }
-
-    saveCart([]); // Empty active cart upon ordering!
-    setChosenCouponCode(''); // Clear applied coupon
   };
 
   // Apply Coupon won from lucky wheel

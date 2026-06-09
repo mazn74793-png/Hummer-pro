@@ -21,7 +21,7 @@ interface CartModalProps {
     paymentMethod: 'cash' | 'card';
     items: CartItem[];
     scheduledDeliveryTime?: string;
-  }) => void;
+  }) => Promise<void> | void;
   lang: 'ar' | 'en';
   couponCodeFromWheel?: string;
 }
@@ -52,6 +52,8 @@ export default function CartModal({
   const [deliveryAddress, setDeliveryAddress] = useState('');
   const [paymentMethod, setPaymentMethod] = useState<'cash' | 'card'>('cash');
   const [showCheckoutForm, setShowCheckoutForm] = useState(false);
+  const [isSubmittingOrder, setIsSubmittingOrder] = useState(false);
+  const [orderSubmitError, setOrderSubmitError] = useState('');
   
   // Scheduled Delivery States
   const [deliveryMode, setDeliveryMode] = useState<'now' | 'scheduled'>('now');
@@ -272,19 +274,34 @@ export default function CartModal({
       ? `${scheduledDay === 'today' ? (isRtl ? 'اليوم' : 'Today') : (isRtl ? 'غداً' : 'Tomorrow')} - ${scheduledTime}`
       : undefined;
 
-    onCheckout({
-      customerName: customerName.trim(),
-      phone: phone.trim(),
-      deliveryAddress: finalAddress,
-      paymentMethod,
-      items: cartItems,
-      scheduledDeliveryTime: finalScheduledTime
-    });
+    setIsSubmittingOrder(true);
+    setOrderSubmitError('');
 
-    setShowCheckoutForm(false);
-    setIsDifferentAddress(false);
-    setAlternativeAddress('');
-    onClose();
+    try {
+      await onCheckout({
+        customerName: customerName.trim(),
+        phone: phone.trim(),
+        deliveryAddress: finalAddress,
+        paymentMethod,
+        items: cartItems,
+        scheduledDeliveryTime: finalScheduledTime
+      });
+
+      setShowCheckoutForm(false);
+      setIsDifferentAddress(false);
+      setAlternativeAddress('');
+      onClose();
+    } catch (err: any) {
+      console.error('Error submitting order on checkout:', err);
+      // Construct a premium descriptive error message
+      setOrderSubmitError(
+        isRtl 
+          ? `عذراً، فشل إرسال الطلب لقاعدة البيانات: ${err.message || err}` 
+          : `Sorry, order could not be registered: ${err.message || err}`
+      );
+    } finally {
+      setIsSubmittingOrder(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -780,14 +797,34 @@ export default function CartModal({
                   </div>
 
                   {/* Confirm order submit button */}
+                  {orderSubmitError && (
+                    <motion.p
+                      initial={{ opacity: 0, scale: 0.95 }}
+                      animate={{ opacity: 1, scale: 1 }}
+                      className="text-[11px] font-black text-red-600 text-center bg-red-50 p-2.5 rounded-xl border border-red-200"
+                    >
+                      ⚠️ {orderSubmitError}
+                    </motion.p>
+                  )}
+
                   <button
                     type="submit"
-                    className="w-full mt-2 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black border border-green-700 transition cursor-pointer shadow-sm flex items-center justify-center gap-1.5"
+                    disabled={isSubmittingOrder}
+                    className="w-full mt-2 py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-black border border-green-700 transition cursor-pointer shadow-sm flex items-center justify-center gap-1.5 disabled:opacity-60 disabled:cursor-not-allowed"
                   >
-                    <CheckCircle2 className="w-4 h-4 animate-bounce" />
-                    <span>
-                      {isRtl ? 'تأكيد الطلب وشغل متتبع الأكل المباشر 🛰️' : 'Confirm Order & Fire Live Radar'}
-                    </span>
+                    {isSubmittingOrder ? (
+                      <span className="flex items-center gap-2">
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin shrink-0" />
+                        <span>{isRtl ? 'جاري إرسال طلبك هاساً...' : 'Submitting order...'}</span>
+                      </span>
+                    ) : (
+                      <>
+                        <CheckCircle2 className="w-4 h-4 animate-bounce" />
+                        <span>
+                          {isRtl ? 'تأكيد الطلب وشغل متتبع الأكل المباشر 🛰️' : 'Confirm Order & Fire Live Radar'}
+                        </span>
+                      </>
+                    )}
                   </button>
                 </motion.form>
               ) : (
