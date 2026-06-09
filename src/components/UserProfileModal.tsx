@@ -50,6 +50,18 @@ export default function UserProfileModal({
   const [fastLoginPhone, setFastLoginPhone] = useState('');
   const [fastLoginError, setFastLoginError] = useState('');
 
+  // Lock body scroll when open
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((usr) => {
       setCurrentUser(usr);

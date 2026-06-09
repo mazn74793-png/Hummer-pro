@@ -117,12 +117,12 @@ export default function Header({
         <div className="flex items-center gap-2">
           <div className="relative shrink-0">
             <motion.img 
-              whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.05 }}
+              whileHover={{ rotate: [0, -10, 10, -10, 0], scale: 1.02 }}
               transition={{ duration: 0.5 }}
               src={(siteSettings?.logoUrl && siteSettings.logoUrl !== 'local-db:logoUrl') ? siteSettings.logoUrl : defaultLogo}
               alt="Hummer Brand Logo"
               referrerPolicy="no-referrer"
-              className="w-9 h-9 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl object-cover bg-zinc-950 shadow-md cursor-pointer"
+              className="w-12 h-12 sm:w-14 sm:h-14 rounded-lg sm:rounded-xl object-contain bg-zinc-950 shadow-lg p-1 cursor-pointer border border-zinc-800"
             />
           </div>
           <div>

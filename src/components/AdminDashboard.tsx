@@ -216,37 +216,35 @@ export default function AdminDashboard({
   // Order alerts sound & visual trackers
   const [lastOrderCount, setLastOrderCount] = useState(orders.length);
 
-  // Sound Synth for live cashier chime alert
+  // Sound Synth for live cashier buzzer whistle warning (صفارة تنبيه هامر)
   const playCashierChime = () => {
     try {
       const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
       
-      // Chime note 1
-      const osc1 = audioCtx.createOscillator();
-      const gain1 = audioCtx.createGain();
-      osc1.connect(gain1);
-      gain1.connect(audioCtx.destination);
-      osc1.type = 'sine';
-      osc1.frequency.setValueAtTime(523.25, audioCtx.currentTime); // C5
-      gain1.gain.setValueAtTime(0.3, audioCtx.currentTime);
-      gain1.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.3);
-      osc1.start(audioCtx.currentTime);
-      osc1.stop(audioCtx.currentTime + 0.35);
+      const playBeep = (startTime: number, frequency: number, duration: number) => {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        
+        // Triangle yields a perfect high-pitch electronic buzzy alert
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(frequency, startTime);
+        
+        gain.gain.setValueAtTime(0, startTime);
+        gain.gain.linearRampToValueAtTime(0.4, startTime + 0.03); // Quick rise
+        gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration - 0.02); // Clean fade
+        
+        osc.start(startTime);
+        osc.stop(startTime + duration);
+      };
 
-      // Chime note 2 slightly staggered
-      setTimeout(() => {
-        const osc2 = audioCtx.createOscillator();
-        const gain2 = audioCtx.createGain();
-        osc2.connect(gain2);
-        gain2.connect(audioCtx.destination);
-        osc2.type = 'sine';
-        osc2.frequency.setValueAtTime(659.25, audioCtx.currentTime); // E5
-        gain2.gain.setValueAtTime(0.35, audioCtx.currentTime);
-        gain2.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + 0.5);
-        osc2.start(audioCtx.currentTime);
-        osc2.stop(audioCtx.currentTime + 0.55);
-      }, 150);
-
+      const now = audioCtx.currentTime;
+      // We will beep 3 times in quick, urgent succession (high whistle-buzz)
+      playBeep(now, 1046.50, 0.15);       // C6 note
+      playBeep(now + 0.20, 1174.66, 0.15); // D6 note
+      playBeep(now + 0.40, 1318.51, 0.25); // E6 note (Slightly longer third note)
+      
     } catch (e) {
       console.warn('Audio synthesis blocked by user interaction restrictions', e);
     }

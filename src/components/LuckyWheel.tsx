@@ -27,6 +27,13 @@ export default function LuckyWheel({ onApplyGiftCode, lang, onClose }: LuckyWhee
 
   // Load spin state from LocalStorage to prevent multi-spins
   useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
+  useEffect(() => {
     const spun = localStorage.getItem('hummer_wheel_spun');
     if (spun === 'true') {
       setHasSpun(true);

@@ -2,6 +2,10 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Trash2, Tag, ChevronLeft, MapPin, Phone, User, CheckCircle2, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem } from '../types';
+import { auth, db } from '../firebase';
+import { signInAnonymously, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { UserProfileData } from './UserProfileModal';
 
 interface CartModalProps {
   isOpen: boolean;
@@ -51,6 +55,114 @@ export default function CartModal({
   // Validation errors
   const [errors, setErrors] = useState<{ name?: string; phone?: string; address?: string }>({});
 
+  // Dynamic Auth and user profiles loaded from Firestore
+  const [currentUser, setCurrentUser] = useState<FirebaseUser | null>(auth.currentUser);
+  const [profileData, setProfileData] = useState<UserProfileData | null>(null);
+  const [isLoadingProfile, setIsLoadingProfile] = useState(false);
+
+  // Fast login fields within the cart
+  const [fastName, setFastName] = useState('');
+  const [fastPhone, setFastPhone] = useState('');
+  const [fastError, setFastError] = useState('');
+  const [isFastRegistering, setIsFastRegistering] = useState(false);
+
+  // Different delivery address override
+  const [isDifferentAddress, setIsDifferentAddress] = useState(false);
+  const [alternativeAddress, setAlternativeAddress] = useState('');
+
+  // Disable body scroll when open (Prevent background shifting/scrolling)
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [isOpen]);
+
+  // Monitor Auth Changes
+  useEffect(() => {
+    if (!isOpen) return;
+    const unsub = onAuthStateChanged(auth, (usr) => {
+      setCurrentUser(usr);
+      if (usr) {
+        loadUserProfile(usr.uid);
+      } else {
+        setProfileData(null);
+      }
+    });
+    return unsub;
+  }, [isOpen]);
+
+  const loadUserProfile = async (uid: string) => {
+    setIsLoadingProfile(true);
+    try {
+      const docRef = doc(db, 'users', uid);
+      const snapshot = await getDoc(docRef);
+      if (snapshot.exists()) {
+        const data = snapshot.data() as UserProfileData;
+        setProfileData(data);
+        // Pre-fill checkout details immediately
+        setCustomerName(data.name || '');
+        setPhone(data.phone || '');
+        if (data.addresses && data.addresses.length > 0) {
+          setDeliveryAddress(data.addresses[0]);
+        }
+      }
+    } catch (e) {
+      console.error('Error loading profile in Cart:', e);
+    } finally {
+      setIsLoadingProfile(false);
+    }
+  };
+
+  const handleFastRegistration = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFastError('');
+
+    const nameVal = fastName.trim();
+    const phoneVal = fastPhone.trim();
+
+    if (!nameVal) {
+      setFastError(isRtl ? 'من فضلك أدخل اسمك الثنائي أو الثلاثي' : 'Please enter your full name');
+      return;
+    }
+
+    if (phoneVal.length < 11 || !/^\d+$/.test(phoneVal)) {
+      setFastError(isRtl ? 'برجاء كتابة رقم موبايل صحيح من ١١ رقم' : 'Please enter a valid 11-digit mobile number');
+      return;
+    }
+
+    setIsFastRegistering(true);
+    try {
+      const credential = await signInAnonymously(auth);
+      const uid = credential.user.uid;
+
+      const docRef = doc(db, 'users', uid);
+      const newProfile: UserProfileData = {
+        uid,
+        name: nameVal,
+        phone: phoneVal,
+        email: 'fastfoodie@hummer.app',
+        addresses: [],
+        createdAt: new Date().toISOString()
+      };
+
+      await setDoc(docRef, newProfile);
+      setProfileData(newProfile);
+      setCustomerName(newProfile.name);
+      setPhone(newProfile.phone);
+      setShowCheckoutForm(true); // advance to checkout fields directly!
+    } catch (err: any) {
+      console.error('Fast login failure inside cart:', err);
+      setFastError(isRtl ? `عذراً، فشل التسجيل: ${err.message}` : `Fast login failed: ${err.message}`);
+    } finally {
+      setIsFastRegistering(false);
+    }
+  };
+
   // Synchronize dynamic promo code triggered from wheel of fortune
   useEffect(() => {
     if (couponCodeFromWheel) {
@@ -97,7 +209,7 @@ export default function CartModal({
   };
 
   // Checkout inputs validation
-  const handleCheckoutSubmit = (e: React.FormEvent) => {
+  const handleCheckoutSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const tempErrors: typeof errors = {};
 
@@ -112,8 +224,10 @@ export default function CartModal({
       tempErrors.phone = isRtl ? 'الرقم ده قصير، اكتب ١١ رقم (مثال: 010...)' : 'Phone must be exactly 11 digits';
     }
 
-    if (!deliveryAddress.trim() || deliveryAddress.trim().length < 8) {
-      tempErrors.address = isRtl ? 'اكتب عنوان مفصل (الشارع، رقم العمارة، الشقة)' : 'Detailed address is too short';
+    const finalAddress = isDifferentAddress ? alternativeAddress.trim() : deliveryAddress.trim();
+
+    if (!finalAddress || finalAddress.length < 8) {
+      tempErrors.address = isRtl ? 'اكتب عنوان مفصل بدقة (الشارع، رقم العمارة، الشقة أو العلامة المميزة)' : 'Detailed address is too short';
     }
 
     if (Object.keys(tempErrors).length > 0) {
@@ -122,18 +236,43 @@ export default function CartModal({
     }
 
     setErrors({});
+
+    // Auto-save the checkout address to their Firestore profile if it is a new address!
+    if (currentUser) {
+      try {
+        const docRef = doc(db, 'users', currentUser.uid);
+        const existingAddresses = profileData?.addresses || [];
+        if (!existingAddresses.includes(finalAddress)) {
+          const updatedAddresses = [...existingAddresses, finalAddress];
+          const updatedProfile = {
+            ...(profileData || {
+              uid: currentUser.uid,
+              name: customerName,
+              phone: phone,
+              email: currentUser.email || 'fastfoodie@hummer.app',
+              createdAt: new Date().toISOString()
+            }),
+            addresses: updatedAddresses
+          };
+          await setDoc(docRef, updatedProfile);
+          setProfileData(updatedProfile as UserProfileData);
+        }
+      } catch (err) {
+        console.error('Error auto-saving customer address to Firestore:', err);
+      }
+    }
+
     onCheckout({
       customerName: customerName.trim(),
       phone: phone.trim(),
-      deliveryAddress: deliveryAddress.trim(),
+      deliveryAddress: finalAddress,
       paymentMethod,
       items: cartItems
     });
 
     setShowCheckoutForm(false);
-    setCustomerName('');
-    setPhone('');
-    setDeliveryAddress('');
+    setIsDifferentAddress(false);
+    setAlternativeAddress('');
     onClose();
   };
 
@@ -292,7 +431,7 @@ export default function CartModal({
 
         {/* Footer Checkout action blocks if items exist */}
         {cartItems.length > 0 && (
-          <div className="p-5 border-t border-zinc-200 bg-zinc-50 space-y-4">
+          <div className="p-5 border-t border-zinc-200 bg-zinc-50 space-y-4 max-h-[60%] overflow-y-auto">
             
             {/* 1. Coupon Widget (Only if checkout form not active) */}
             {!showCheckoutForm && (
@@ -349,9 +488,68 @@ export default function CartModal({
               </div>
             </div>
 
-            {/* 3. Checkout Portal Form toggles */}
+            {/* 3. Checkout Portal Form toggles with login enforcement */}
             <AnimatePresence>
-              {showCheckoutForm ? (
+              {!currentUser ? (
+                /* MANDATORY REGISTRATION BARRIER */
+                <motion.div
+                  initial={{ opacity: 0, y: 15 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -15 }}
+                  className="bg-zinc-100 border border-zinc-200 p-4 rounded-2xl text-right space-y-3"
+                >
+                  <h4 className="text-xs font-black text-red-600 flex items-center gap-1 justify-end">
+                    <span>{isRtl ? 'يجب تسجيل الدخول لإتمام الطلب ⚠️' : 'Registration required to order ⚠️'}</span>
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 leading-relaxed">
+                    {isRtl 
+                      ? 'لكي نتمكن من حفظ حسابك وتتبع خطوات طبخ الدليفري حيًا على الخريطة، من فضلك سجل ثنائيًا في ثانية واحدة!' 
+                      : 'To track cooking times and delivery in real-time on our map, please complete a fast 1-second login!'}
+                  </p>
+
+                  <form onSubmit={handleFastRegistration} className="space-y-2.5">
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-zinc-400 block">{isRtl ? 'اسمك الكريم (ثنائي أو ثلاثي):' : 'Enter your name:'}</label>
+                      <input
+                        type="text"
+                        required
+                        value={fastName}
+                        onChange={(e) => setFastName(e.target.value)}
+                        placeholder={isRtl ? 'اكتب اسمك للمندوب...' : 'Enter your name here...'}
+                        className="w-full text-right p-2 border border-zinc-350 rounded-xl bg-white text-xs font-bold outline-none focus:border-red-600"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-[9px] font-black text-zinc-400 block">{isRtl ? 'رقم موبايل التوصيل (١١ رقم):' : 'Mobile number (11 digits):'}</label>
+                      <input
+                        type="tel"
+                        required
+                        maxLength={11}
+                        value={fastPhone}
+                        onChange={(e) => setFastPhone(e.target.value.replace(/\D/g, ''))}
+                        placeholder="01xxxxxxxxx"
+                        className="w-full text-center p-2 border border-zinc-350 rounded-xl bg-white text-xs font-semibold font-mono tracking-wider outline-none focus:border-red-600"
+                      />
+                    </div>
+
+                    {fastError && <p className="text-[10px] font-bold text-red-600 text-center animate-pulse">{fastError}</p>}
+
+                    <button
+                      type="submit"
+                      disabled={isFastRegistering}
+                      className="w-full py-2 bg-red-650 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black shadow-md border border-red-700 transition"
+                    >
+                      {isFastRegistering ? (
+                        <span>{isRtl ? 'جاري تسجيل حسابك الفوري...' : 'Creating immediate session...'}</span>
+                      ) : (
+                        <span>{isRtl ? 'سجل حسابك واطلب الآن ⚡' : 'Register & Order Instantly ⚡'}</span>
+                      )}
+                    </button>
+                  </form>
+                </motion.div>
+              ) : showCheckoutForm ? (
+                /* AUTHENTICATED USER CHECKOUT FORM */
                 <motion.form
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -359,66 +557,95 @@ export default function CartModal({
                   onSubmit={handleCheckoutSubmit}
                   className="space-y-3 pt-3 border-t border-zinc-200 text-right"
                 >
-                  {/* Name */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-zinc-400 block uppercase tracking-wide">
-                      {isRtl ? 'اسم العميل ثلاثي:' : 'Customer Full Name:'}
-                    </label>
-                    <div className="relative">
-                      <User className="w-4 h-4 text-zinc-400 absolute top-2.5 right-3" />
-                      <input
-                        type="text"
-                        required
-                        value={customerName}
-                        onChange={(e) => setCustomerName(e.target.value)}
-                        placeholder={isRtl ? 'احمد الشافعي ...' : 'e.g. John Doe'}
-                        className="w-full text-right pr-9 pl-3 py-2 bg-white text-zinc-950 font-bold rounded-xl text-xs border border-zinc-200 outline-none focus:border-red-600"
-                      />
-                    </div>
-                    {errors.name && <p className="text-[9px] text-red-600 font-black">{errors.name}</p>}
+                  {/* Prefilled Profile Name (Read only to avoid mistake mixups as requested) */}
+                  <div className="space-y-1 bg-zinc-100 p-2.5 rounded-xl border border-zinc-200">
+                    <span className="text-[9px] font-black text-zinc-400 block uppercase tracking-wide">
+                      {isRtl ? '👤 بيانات المستلم المعتمدة:' : '👤 Confirmed recipient info:'}
+                    </span>
+                    <p className="text-xs font-black text-zinc-950 mt-1">
+                      {customerName}
+                    </p>
+                    <p className="text-xs font-bold font-mono text-zinc-650 mt-0.5">
+                      {phone}
+                    </p>
+                    <p className="text-[10px] text-zinc-400 mt-1 font-bold">
+                      {isRtl 
+                        ? 'تتم تعبئة بيانات الهاتف والاسم والملف الشخصي تلقائيًا لتسريع الشحن ⚡' 
+                        : 'Contact credentials are preloaded directly from your secure epicure file ⚡'}
+                    </p>
                   </div>
 
-                  {/* Telephone */}
+                  {/* Saved Addresses dropdown menu */}
                   <div className="space-y-1">
                     <label className="text-[10px] font-black text-zinc-400 block uppercase tracking-wide">
-                      {isRtl ? 'رقم الهاتف للتوصيل (11 رقم):' : 'Egyptian Mobile Number (11 Digits):'}
+                      {isRtl ? '📍 عنوان التوصيل الأساسي الحائز:' : '📍 Primary target delivery address:'}
                     </label>
-                    <div className="relative">
-                      <Phone className="w-4 h-4 text-zinc-400 absolute top-2.5 right-3" />
-                      <input
-                        type="tel"
-                        required
-                        maxLength={11}
-                        value={phone}
-                        onChange={(e) => setPhone(e.target.value.replace(/\D/g, ''))} // numbers only
-                        placeholder={isRtl ? '01023456789' : '01012345678'}
-                        className="w-full pr-9 pl-3 py-2 bg-white text-zinc-950 rounded-xl text-xs border border-zinc-200 outline-none focus:border-red-600 font-mono text-center font-bold"
-                      />
-                    </div>
-                    {errors.phone && <p className="text-[9px] text-red-650 font-black">{errors.phone}</p>}
-                  </div>
 
-                  {/* Address */}
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-black text-zinc-400 block uppercase tracking-wide">
-                      {isRtl ? 'العنوان التفصيلي ومكان التسليم:' : 'Detailed Delivery Address:'}
-                    </label>
-                    <div className="relative">
-                      <MapPin className="w-4 h-4 text-zinc-400 absolute top-2.5 right-3" />
-                      <input
-                        type="text"
-                        required
+                    {profileData?.addresses && profileData.addresses.length > 0 ? (
+                      <select
+                        disabled={isDifferentAddress}
                         value={deliveryAddress}
                         onChange={(e) => setDeliveryAddress(e.target.value)}
-                        placeholder={isRtl ? 'مثال: عباس العقاد، عمارة 15، شقة 4، الدور الـ 3' : 'e.g. 15 Abbas Akkad St, Floor 3, App 4'}
-                        className="w-full text-right pr-9 pl-3 py-2 bg-white text-zinc-950 font-bold rounded-xl text-xs border border-zinc-200 outline-none focus:border-red-600"
-                      />
-                    </div>
+                        className="w-full text-right p-2.5 bg-white text-zinc-950 rounded-xl text-xs font-bold border border-zinc-200 outline-none focus:border-red-650 disabled:bg-zinc-50 disabled:text-zinc-400"
+                      >
+                        {profileData.addresses.map((addr, idx) => (
+                          <option key={idx} value={addr}>{addr}</option>
+                        ))}
+                      </select>
+                    ) : (
+                      /* No addresses saved yet: let user write their address directly (it will be auto-saved) */
+                      <div className="relative">
+                        <MapPin className="w-4 h-4 text-zinc-400 absolute top-2.5 right-3" />
+                        <input
+                          type="text"
+                          required={!isDifferentAddress}
+                          value={deliveryAddress}
+                          onChange={(e) => setDeliveryAddress(e.target.value)}
+                          placeholder={isRtl ? 'اكتب عنوان التوصيل بدقة (الشارع، العمارة، الشقة)' : 'e.g. Abbas El Akkad St, Build 4, Apt 11'}
+                          className="w-full text-right pr-9 pl-3 py-2 bg-white text-zinc-950 font-bold rounded-xl text-xs border border-zinc-200 outline-none focus:border-red-600"
+                        />
+                      </div>
+                    )}
                     {errors.address && <p className="text-[9px] text-red-600 font-black">{errors.address}</p>}
                   </div>
 
+                  {/* Optional address different override */}
+                  <div className="pt-1">
+                    <label className="flex items-center gap-2 justify-end cursor-pointer select-none">
+                      <span className="text-[11px] font-bold text-zinc-600">
+                        {isRtl ? '🏡 التوصيل لعنوان مختلف أو بديل؟' : '🏡 Ship to a different alternative address?'}
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={isDifferentAddress}
+                        onChange={(e) => setIsDifferentAddress(e.target.checked)}
+                        className="w-4 h-4 text-red-600 rounded bg-zinc-100 border-zinc-300 focus:ring-red-500 cursor-pointer"
+                      />
+                    </label>
+
+                    {isDifferentAddress && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="mt-2 space-y-1"
+                      >
+                        <div className="relative">
+                          <MapPin className="w-4 h-4 text-zinc-400 absolute top-2.5 right-3" />
+                          <input
+                            type="text"
+                            required
+                            value={alternativeAddress}
+                            onChange={(e) => setAlternativeAddress(e.target.value)}
+                            placeholder={isRtl ? 'اكتب العنوان البديل بالتفصيل...' : 'Enter alternative address detailed...'}
+                            className="w-full text-right pr-9 pl-3 py-2 bg-white text-zinc-900 font-bold rounded-xl text-xs border border-zinc-350 outline-none focus:border-red-600"
+                          />
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
+
                   {/* Payment method */}
-                  <div className="space-y-1.5 text-right">
+                  <div className="space-y-1.5 text-right pt-1">
                     <span className="text-[10px] font-black text-zinc-400 block uppercase tracking-wide">{isRtl ? 'حدد طريقة الدفع للجباية:' : 'Payment Option:'}</span>
                     <div className="grid grid-cols-2 gap-2">
                       <button
@@ -453,7 +680,7 @@ export default function CartModal({
                   >
                     <CheckCircle2 className="w-4 h-4 animate-bounce" />
                     <span>
-                      {isRtl ? 'تأكيد وشغل متتبع الأكل المباشر 🛰️' : 'Confirm Order & Fire Live Radar'}
+                      {isRtl ? 'تأكيد الطلب وشغل متتبع الأكل المباشر 🛰️' : 'Confirm Order & Fire Live Radar'}
                     </span>
                   </button>
                 </motion.form>

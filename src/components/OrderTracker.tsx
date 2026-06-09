@@ -60,6 +60,14 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
     return typeof window !== 'undefined' ? window.innerWidth > 640 : false;
   });
 
+  // Lock body scroll when tracker is active
+  useEffect(() => {
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, []);
+
   // Auto progression of order status simulator for extremely satisfying UX
   useEffect(() => {
     let intervalId: NodeJS.Timeout;
