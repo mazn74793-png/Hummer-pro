@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Trash2, Tag, ChevronLeft, MapPin, Phone, User, CheckCircle2, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem } from '../types';
-import { auth, db } from '../firebase';
+import { auth, db, cleanFirestoreData } from '../firebase';
 import { signInAnonymously, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { UserProfileData } from './UserProfileModal';
@@ -225,7 +225,7 @@ export default function CartModal({
       // Safe Firestore set doc - catch permission denied silently in virtual/offline cases
       try {
         const docRef = doc(db, 'users', uid);
-        await setDoc(docRef, newProfile);
+        await setDoc(docRef, cleanFirestoreData(newProfile));
       } catch (dbErr: any) {
         console.warn('Could not write profile to Firestore users:', dbErr);
       }
@@ -333,7 +333,7 @@ export default function CartModal({
             }),
             addresses: updatedAddresses
           };
-          await setDoc(docRef, updatedProfile);
+          await setDoc(docRef, cleanFirestoreData(updatedProfile));
           setProfileData(updatedProfile as UserProfileData);
         }
       } catch (err) {

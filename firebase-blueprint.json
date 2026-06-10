@@ -64,6 +64,20 @@
         "updatedAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "customerName", "phone", "deliveryAddress", "paymentMethod", "items", "finalTotal", "status", "createdAt"]
+    },
+    "ProductComment": {
+      "title": "Product Comment",
+      "description": "Reviews and feedback left by guests and users on specific menu items",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "productId": { "type": "string" },
+        "userName": { "type": "string" },
+        "rating": { "type": "number" },
+        "comment": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "productId", "userName", "rating", "comment", "createdAt"]
     }
   },
   "firestore": {
@@ -82,6 +96,10 @@
     "orders/{orderId}": {
       "schema": "Order",
       "description": "Orders, synchronized in real time with administrators"
+    },
+    "product_comments/{commentId}": {
+      "schema": "ProductComment",
+      "description": "Product ratings and reviews posted by guests"
     }
   }
 }

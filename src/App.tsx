@@ -21,7 +21,7 @@ import IntroVideoOverlay from './components/IntroVideoOverlay';
 import { saveLargeAsset, getLargeAsset, deleteLargeAsset } from './utils/indexedDB';
 
 // Firebase Integrators
-import { auth, db, googleProvider } from './firebase';
+import { auth, db, googleProvider, cleanFirestoreData } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser, signInWithPopup } from 'firebase/auth';
 import { collection, onSnapshot, doc, getDoc, setDoc, addDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import UserProfileModal from './components/UserProfileModal';
@@ -924,17 +924,18 @@ export default function App() {
       estimatedMinutes: Math.floor(Math.random() * 10 + 35), // 35 - 45 mins
       captainName,
       userId: currentUser?.uid || 'guest',
-      scheduledDeliveryTime: orderDetails.scheduledDeliveryTime
+      scheduledDeliveryTime: orderDetails.scheduledDeliveryTime || null
     };
 
     // Write directly to our relational-structured persistent Firestore database
     try {
-      await setDoc(doc(db, 'orders', docId), {
+      const orderPayloadToSave = cleanFirestoreData({
         ...placedOrder,
         riderId: '',
         riderName: '',
         riderPhone: ''
       });
+      await setDoc(doc(db, 'orders', docId), orderPayloadToSave);
       
       // Only set success states and empty the basket if database write compiles successfully
       setJustPlacedOrder(placedOrder);
@@ -1130,6 +1131,7 @@ export default function App() {
                       item={item}
                       onAddToCart={handleAddToCart}
                       lang={lang}
+                      isAdmin={isRealAdmin}
                     />
                   </motion.div>
                 ))}

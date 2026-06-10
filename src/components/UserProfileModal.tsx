@@ -5,7 +5,7 @@ import {
   MapPinHouse, History, Clock, Ship, Flame, Star, 
   Trash2, ShieldCheck, ShoppingBag
 } from 'lucide-react';
-import { auth, db, googleProvider } from '../firebase';
+import { auth, db, googleProvider, cleanFirestoreData } from '../firebase';
 import { signInWithPopup, signOut, signInAnonymously, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
@@ -120,7 +120,7 @@ export default function UserProfileModal({
           createdAt: new Date().toISOString()
         };
         try {
-          await setDoc(docRef, newProfile);
+          await setDoc(docRef, cleanFirestoreData(newProfile));
         } catch (dbErr) {
           console.warn('Could not write profile to Firestore:', dbErr);
         }
@@ -228,7 +228,7 @@ export default function UserProfileModal({
       // Safe Firestore set doc - catch permission/restricted errors safely
       try {
         const docRef = doc(db, 'users', uid);
-        await setDoc(docRef, newProfile);
+        await setDoc(docRef, cleanFirestoreData(newProfile));
       } catch (dbErr: any) {
         console.warn('Could not write profile to Firestore:', dbErr);
       }
@@ -275,7 +275,7 @@ export default function UserProfileModal({
         name: formName.trim() || currentUser.displayName || 'أكيل هامر',
         phone: phoneTrim
       };
-      await updateDoc(docRef, updatedFields);
+      await updateDoc(docRef, cleanFirestoreData(updatedFields));
       setProfileData({
         ...profileData,
         ...updatedFields

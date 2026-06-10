@@ -52,5 +52,11 @@ service cloud.firestore {
     match /orders/{orderId} {
       allow read, write: if true;
     }
+
+    // Product Comments Collection (Public Read/Create, Admin Delete)
+    match /product_comments/{commentId} {
+      allow read, create: if true;
+      allow update, delete: if isAdmin();
+    }
   }
 }

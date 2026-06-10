@@ -121,3 +121,13 @@ export interface SiteSettings {
   disableIntro?: boolean;
 }
 
+export interface ProductComment {
+  id: string;
+  productId: string;
+  userName: string;
+  rating: number;
+  comment: string;
+  createdAt: string;
+}
+
+

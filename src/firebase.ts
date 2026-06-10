@@ -57,3 +57,38 @@ export function handleFirestoreError(error: unknown, operationType: OperationTyp
   console.error('Firestore Hardened Error Log: ', JSON.stringify(errInfo));
   throw new Error(JSON.stringify(errInfo));
 }
+
+/**
+ * Recursively cleans an object to ensure no fields are `undefined`,
+ * which would otherwise cause Firestore writes to fail on the client.
+ */
+export function cleanFirestoreData<T>(obj: T): T {
+  if (obj === null || obj === undefined) {
+    return null as unknown as T;
+  }
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => cleanFirestoreData(item)) as unknown as T;
+  }
+  
+  if (typeof obj === 'object') {
+    // If it is a native Date object, don't clean it as an plain object
+    if (obj instanceof Date) {
+      return obj;
+    }
+    const cleaned: any = {};
+    for (const key in obj) {
+      if (Object.prototype.hasOwnProperty.call(obj, key)) {
+        const val = obj[key];
+        if (val === undefined) {
+          continue;
+        }
+        cleaned[key] = cleanFirestoreData(val);
+      }
+    }
+    return cleaned as T;
+  }
+  
+  return obj;
+}
+

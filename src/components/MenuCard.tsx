@@ -1,17 +1,38 @@
-import React, { useState } from 'react';
-import { Flame, Plus, Check, Info } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Flame, Plus, Check, Info, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MenuItem, SizeOption } from '../types';
+import { db } from '../firebase';
+import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import ProductCommentsModal from './ProductCommentsModal';
 
 interface MenuCardProps {
   item: MenuItem;
   onAddToCart: (item: MenuItem, quantity: number, selectedSize?: SizeOption, isSpicy?: boolean, notes?: string) => void;
   lang: 'ar' | 'en';
+  isAdmin?: boolean;
 }
 
-export default function MenuCard({ item, onAddToCart, lang }: MenuCardProps) {
+export default function MenuCard({ item, onAddToCart, lang, isAdmin = false }: MenuCardProps) {
   const isRtl = lang === 'ar';
   const hasSizes = item.sizes && item.sizes.length > 0;
+
+  // Real-time comments count state
+  const [commentCount, setCommentCount] = useState(0);
+  const [showCommentsModal, setShowCommentsModal] = useState(false);
+
+  useEffect(() => {
+    const q = query(
+      collection(db, 'product_comments'),
+      where('productId', '==', item.id)
+    );
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      setCommentCount(snapshot.size);
+    }, (error) => {
+      // Passive catch for guests
+    });
+    return () => unsubscribe();
+  }, [item.id]);
 
   // Configuration state
   const [isSpicy, setIsSpicy] = useState<boolean>(item.spicyOption ? true : false);
@@ -151,16 +172,27 @@ export default function MenuCard({ item, onAddToCart, lang }: MenuCardProps) {
             </div>
           )}
 
-          {/* 3. Note Trigger Input */}
-          <div className="flex flex-col gap-0.5">
-            <button
-              type="button"
-              onClick={() => setShowNotesField(!showNotesField)}
-              className="text-[8px] xs:text-[10px] sm:text-[11px] text-red-600 hover:text-red-700 font-black flex items-center gap-0.5 self-start cursor-pointer"
-            >
-              <Info className="w-2.5 h-2.5" />
-              <span>{isRtl ? 'ملاحظة خاصة للشيف؟' : 'Special request?'}</span>
-            </button>
+          {/* 3. Note Trigger Input & Product Comments click */}
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between">
+              <button
+                type="button"
+                onClick={() => setShowNotesField(!showNotesField)}
+                className="text-[8px] xs:text-[10px] sm:text-[11px] text-red-600 hover:text-red-700 font-black flex items-center gap-0.5 cursor-pointer"
+              >
+                <Info className="w-2.5 h-2.5" />
+                <span>{isRtl ? 'ملاحظة للشيف؟' : 'Special request?'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setShowCommentsModal(true)}
+                className="text-[8px] xs:text-[9px] sm:text-[10px] p-1 px-2.5 bg-yellow-55 border border-yellow-200/60 rounded-lg text-yellow-800 font-black flex items-center gap-1 cursor-pointer transition hover:bg-yellow-100"
+              >
+                <MessageSquare className="w-2.5 h-2.5 text-yellow-600 fill-current" />
+                <span>{isRtl ? `تعليقات (${commentCount})` : `Comments (${commentCount})`}</span>
+              </button>
+            </div>
             <AnimatePresence>
               {showNotesField && (
                 <motion.input
@@ -224,6 +256,14 @@ export default function MenuCard({ item, onAddToCart, lang }: MenuCardProps) {
           </button>
         </div>
       </div>
+
+      <ProductCommentsModal
+        item={item}
+        isOpen={showCommentsModal}
+        onClose={() => setShowCommentsModal(false)}
+        lang={lang}
+        isAdmin={isAdmin}
+      />
     </motion.div>
   );
 }
