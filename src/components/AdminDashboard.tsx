@@ -318,8 +318,8 @@ export default function AdminDashboard({
     }
   };
 
-  // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'
-  const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'>('orders');
+  // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins' | 'coupons-wheel'
+  const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins' | 'coupons-wheel'>('orders');
 
   
   // Fullscreen state
@@ -371,6 +371,14 @@ export default function AdminDashboard({
   // Admin expansion form states
   const [newAdminEmail, setNewAdminEmail] = useState('');
   const [isAdminSaving, setIsAdminSaving] = useState(false);
+
+  // Coupon creation states
+  const [newCouponCode, setNewCouponCode] = useState('');
+  const [couponType, setCouponType] = useState<'discount' | 'gift'>('discount');
+  const [couponDiscount, setCouponDiscount] = useState<number>(15);
+  const [couponGiftItem, setCouponGiftItem] = useState('FRIES');
+  const [couponLimit, setCouponLimit] = useState<number>(100);
+  const [couponExpiry, setCouponExpiry] = useState('');
 
   // Rider creation form states
   const [newRiderName, setNewRiderName] = useState('');
@@ -1073,6 +1081,18 @@ export default function AdminDashboard({
             >
               <span>{isRtl ? 'صلاحيات الإدارة والمديرين 🔑' : 'Manage Admin Credentials 🔑'}</span>
               <Users className="w-4 h-4 text-zinc-400" />
+            </button>
+
+            <button
+              onClick={() => setActiveSubTab('coupons-wheel')}
+              className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
+                activeSubTab === 'coupons-wheel'
+                  ? 'bg-red-600 text-white shadow'
+                  : 'bg-zinc-800/40 text-zinc-400 hover:bg-zinc-800 hover:text-white'
+              }`}
+            >
+              <span>{isRtl ? 'الكوبونات وعجلة الحظ 🎡' : 'Coupons & Lucky Wheel 🎡'}</span>
+              <Award className="w-4 h-4 text-zinc-400" />
             </button>
           </div>
 
@@ -3002,6 +3022,247 @@ export default function AdminDashboard({
                         <span className="font-extrabold">{admEmail}</span>
                       </div>
                     ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {activeSubTab === 'coupons-wheel' && (
+            <div className="space-y-6 text-right" id="subtab-coupons-wheel">
+              {/* Form to Add Coupon */}
+              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-4">
+                <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">
+                  {isRtl ? '🎡 إضافة كوبون خصم أو جائزة لعجلة الحظ' : 'Create Coupon & Lucky Wheel Prize'}
+                </h4>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right" dir="rtl">
+                  {/* Coupon Code */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-300 block">
+                      {isRtl ? 'رمز الكوبون (Code):' : 'Coupon Code:'}
+                    </label>
+                    <input
+                      type="text"
+                      value={newCouponCode}
+                      onChange={(e) => setNewCouponCode(e.target.value.toUpperCase().replace(/\s+/g, ''))}
+                      placeholder="e.g. EXTRA15"
+                      className="w-full bg-zinc-900 border border-zinc-800 p-2.5 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
+                    />
+                  </div>
+
+                  {/* Coupon Type */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-300 block">
+                      {isRtl ? 'نوع الجائزة / الكوبون:' : 'Prize Type:'}
+                    </label>
+                    <select
+                      value={couponType}
+                      onChange={(e) => setCouponType(e.target.value as 'discount' | 'gift')}
+                      className="w-full bg-zinc-900 border border-zinc-800 p-2.5 text-xs font-bold text-white rounded-xl outline-none"
+                    >
+                      <option value="discount">{isRtl ? 'خصم مئوي (%)' : 'Percentage Discount (%)'}</option>
+                      <option value="gift">{isRtl ? 'هدية وجبة/مشروب مجاني' : 'Free Food / Soft Drink Gift'}</option>
+                    </select>
+                  </div>
+
+                  {/* Discount percentage or gift item */}
+                  {couponType === 'discount' ? (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-300 block">
+                        {isRtl ? 'نسبة الخصم المئوية (%):' : 'Discount Percentage (%):'}
+                      </label>
+                      <input
+                        type="number"
+                        min="1"
+                        max="100"
+                        value={couponDiscount}
+                        onChange={(e) => setCouponDiscount(Number(e.target.value))}
+                        className="w-full bg-zinc-900 border border-zinc-800 p-2.5 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
+                      />
+                    </div>
+                  ) : (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-black text-zinc-300 block">
+                        {isRtl ? 'نوع الهدية (مثال: بيبسي أو بطاطس):' : 'Gift Item Code / Name:'}
+                      </label>
+                      <select
+                        value={couponGiftItem}
+                        onChange={(e) => setCouponGiftItem(e.target.value)}
+                        className="w-full bg-zinc-900 border border-zinc-800 p-2.5 text-xs font-bold text-white rounded-xl outline-none"
+                      >
+                        <option value="PEPSI">{isRtl ? 'بيبسي مثلج مجاناً (PEPSI)' : 'Free Pepsi (PEPSI)'}</option>
+                        <option value="FRIES">{isRtl ? 'بطاطس مقلية مجانية (FRIES)' : 'Free Fries (FRIES)'}</option>
+                        <option value="COLESLAW">{isRtl ? 'سلطة كول سلو هدية (COLESLAW)' : 'Free Coleslaw (COLESLAW)'}</option>
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Limit of uses */}
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-black text-zinc-300 block font-sans">
+                      {isRtl ? 'العدد الأقصى للاستخدام (Limit):' : 'Max Allowed Uses (Limit):'}
+                    </label>
+                    <input
+                      type="number"
+                      min="1"
+                      value={couponLimit}
+                      onChange={(e) => setCouponLimit(Number(e.target.value))}
+                      className="w-full bg-zinc-900 border border-zinc-800 p-2.5 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
+                    />
+                    <p className="text-[8px] text-zinc-500 font-bold">
+                      {isRtl ? 'أي عدد استخدامات مسموحة قبل تعطيل هذا الكوبون.' : 'Usage limitation of this promotion code.'}
+                    </p>
+                  </div>
+
+                  {/* Expiry Date */}
+                  <div className="space-y-1.5 md:col-span-2">
+                    <label className="text-[10px] font-black text-zinc-300 block">
+                      {isRtl ? 'تاريخ نهاية الكوبون (Expiry Date):' : 'Expiration End Date:'}
+                    </label>
+                    <input
+                      type="date"
+                      value={couponExpiry}
+                      onChange={(e) => setCouponExpiry(e.target.value)}
+                      className="w-full bg-zinc-900 border border-zinc-800 p-2.5 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <button
+                    type="button"
+                    onClick={async () => {
+                      const code = newCouponCode.trim().toUpperCase();
+                      if (!code) {
+                        alert(isRtl ? 'الرجاء كتابة رمز الكوبون!' : 'Please write coupon code!');
+                        return;
+                      }
+                      if (!couponExpiry) {
+                        alert(isRtl ? 'الرجاء اختيار تاريخ انتهاء الكوبون!' : 'Please set coupon expiry date!');
+                        return;
+                      }
+
+                      const newCoupon = {
+                        code,
+                        discountPercent: couponType === 'discount' ? couponDiscount : 0,
+                        limit: couponLimit,
+                        usedCount: 0,
+                        expiryDate: couponExpiry,
+                        giftType: couponType,
+                        giftItem: couponType === 'gift' ? couponGiftItem : undefined
+                      };
+
+                      const currentCoupons = siteSettings.coupons || [];
+                      // Prevent duplicates
+                      if (currentCoupons.some(c => c.code.toUpperCase() === code)) {
+                        alert(isRtl ? 'هذا الكود مضاف بالفعل!' : 'Self-same promo code exists!');
+                        return;
+                      }
+
+                      const updatedCoupons = [...currentCoupons, newCoupon];
+                      
+                      try {
+                        onUpdateSiteSettings({
+                          ...siteSettings,
+                          coupons: updatedCoupons
+                        });
+                        // Reset forms
+                        setNewCouponCode('');
+                        setCouponExpiry('');
+                        toastNotification(isRtl ? 'تم إضافة الكوبون بنجاح وجاهز للتشغيل! 🎡' : 'Coupon listed successfully into the system! 🎡');
+                      } catch (err) {
+                        console.error('Error saving coupon settings:', err);
+                      }
+                    }}
+                    className="px-6 py-2.5 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black transition cursor-pointer flex items-center gap-1.5"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>{isRtl ? 'حفظ وإدراج الكوبون بالنظام' : 'Add Promo Code'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* List of Registered/Active Coupons in Firestore */}
+              <div className="bg-zinc-950 p-6 rounded-3xl border border-zinc-850 shadow-lg space-y-4">
+                <h4 className="text-xs font-black text-zinc-400 uppercase tracking-widest">
+                  {isRtl ? '🛡️ قائمة الكوبونات وجوائز عجلات الحظ الفعالة' : 'Active Registered Coupons & Wheel Prizes'}
+                </h4>
+
+                {(!siteSettings.coupons || siteSettings.coupons.length === 0) ? (
+                  <p className="text-xs text-zinc-500 font-bold text-center py-8">
+                    {isRtl 
+                      ? 'لا توجد كوبونات ديناميكية في قاعدة البيانات. (سيتم استخدام الكوبونات الافتراضية لعجلة الحظ)' 
+                      : 'No custom coupons defined. Default fallbacks running.'}
+                  </p>
+                ) : (
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4" dir="rtl">
+                    {siteSettings.coupons.map((coupon) => {
+                      const todayStr = new Date().toISOString().split('T')[0];
+                      const isExpired = coupon.expiryDate && todayStr > coupon.expiryDate;
+                      const isLimitExceeded = coupon.limit > 0 && coupon.usedCount >= coupon.limit;
+                      const isActive = !isExpired && !isLimitExceeded;
+
+                      return (
+                        <div key={coupon.code} className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl relative space-y-3 flex flex-col justify-between">
+                          <div className="flex justify-between items-start gap-2">
+                            <button
+                              onClick={() => {
+                                if (confirm(isRtl ? 'هل تريد حذف هذا الكوبون بالكامل من قاعدة البيانات؟' : 'Are you sure you want to remove this promo code?')) {
+                                  const updated = (siteSettings.coupons || []).filter(c => c.code !== coupon.code);
+                                  onUpdateSiteSettings({
+                                    ...siteSettings,
+                                    coupons: updated
+                                  });
+                                  toastNotification(isRtl ? 'تم حذف الكوبون بنجاح.' : 'Promo coupon code deleted.');
+                                }
+                              }}
+                              className="p-1.5 text-zinc-500 hover:text-red-500/80 rounded-lg cursor-pointer transition shrink-0"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                            <div className="text-right flex-1">
+                              <span className="font-mono text-sm font-black text-white bg-zinc-800 px-2 py-0.5 rounded tracking-wider block w-fit mr-auto mb-1">
+                                {coupon.code}
+                              </span>
+                              <p className="text-xs font-bold text-zinc-300">
+                                {coupon.giftType === 'discount' 
+                                  ? (isRtl ? `خصم بقيمة ${coupon.discountPercent}%` : `${coupon.discountPercent}% OFF`) 
+                                  : (isRtl ? `هدية مجانية: ${coupon.giftItem}` : `Free Gift: ${coupon.giftItem}`)}
+                              </p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5 pt-2 border-t border-zinc-850 text-[10px] font-semibold text-zinc-400">
+                            <div className="flex justify-between">
+                              <span>{isRtl ? 'تاريخ الانتهاء:' : 'Expiry Date:'}</span>
+                              <span className={isExpired ? 'text-red-500 font-bold' : 'text-zinc-200'}>{coupon.expiryDate}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span>{isRtl ? 'الاستخدام الحقيقي:' : 'Usage Track:'}</span>
+                              <span className={isLimitExceeded ? 'text-red-500 font-bold' : 'text-zinc-200'}>
+                                {coupon.usedCount} / {coupon.limit}
+                              </span>
+                            </div>
+                            <div className="w-full bg-zinc-950 h-1.5 rounded-full overflow-hidden mt-1">
+                              <div 
+                                className={`h-full ${isLimitExceeded ? 'bg-red-500' : 'bg-green-500'}`} 
+                                style={{ width: `${Math.min(100, (coupon.usedCount / coupon.limit) * 100)}%` }} 
+                              />
+                            </div>
+                          </div>
+
+                          <div className="pt-2 text-[10px] flex justify-between items-center">
+                            <span className={`inline-block px-2 py-0.5 rounded-md text-[9px] font-black ${
+                              isActive ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400'
+                            }`}>
+                              {isActive ? (isRtl ? 'فعال ومفعل' : 'Active') : (isRtl ? 'منتهي/مستنفذ' : 'Expired/Exhausted')}
+                            </span>
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

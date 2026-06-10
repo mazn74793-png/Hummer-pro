@@ -154,33 +154,35 @@ export default function HeroSection({ onOpenWheel, lang, siteSettings }: HeroSec
             </div>
           </div>
 
-          {/* Box 6: Wide Interactive Promo Wheel Shortcut (col-span-2 row-span-1) */}
-          <div className="md:col-span-2 md:row-span-1 bg-zinc-100 rounded-3xl md:rounded-[2.5rem] p-6 sm:p-8 flex items-center justify-between border border-zinc-200 overflow-hidden relative shadow-xs min-h-[140px] md:min-h-[160px]">
+          {/* Box 6: Wide Interactive Special Promo Shortcut (col-span-2 row-span-1) */}
+          <div 
+            onClick={() => handleScrollToId('menu')}
+            className="md:col-span-2 md:row-span-1 bg-zinc-100 hover:bg-zinc-250 hover:bg-zinc-200/50 rounded-3xl md:rounded-[2.5rem] p-6 sm:p-8 flex items-center justify-between border border-zinc-200 overflow-hidden relative shadow-xs min-h-[140px] md:min-h-[160px] cursor-pointer transition-all"
+          >
             <div className="flex-1 text-right space-y-1 relative z-10">
               <div className="text-[10px] font-black text-red-600 uppercase tracking-widest">
-                {isRtl ? 'هدية الويكند الحارقة' : 'Weekend Mega Deal'}
+                {isRtl ? 'الخلطة السرية المقرمشة' : 'Hummer Crispy Secret'}
               </div>
               <h3 className="text-xl sm:text-2xl font-black text-zinc-900 uppercase tracking-tight">
-                {isRtl ? 'اكسب كريب مجاني بالكامل!' : 'Get a FREE Crepe!'}
+                {isRtl ? 'طعم القرمشة الأسطوري!' : 'Legendary Crispy Taste!'}
               </h3>
-              <p className="text-zinc-500 text-xs font-bold max-w-sm">
+              <p className="text-zinc-500 text-xs font-bold max-w-sm leading-relaxed">
                 {isRtl 
-                  ? 'دير عجلة الحظ المضمونة هامر واكسب كود خصم فوري أو مقبلات مجانية لطلبك.' 
-                  : 'Spin our lucky winning wheel to snag extreme discounts or crispy free fries right away.'}
+                  ? 'كريب طازج وساخن يُحضر بأجود الخامات مع جبنة سايحة وخلطة حصرية لا مثيل لها.' 
+                  : 'Freshly grilled steaming hot crepes filled with premium ingredients, melting cheese & chef secrets.'}
               </p>
               
               <button
-                onClick={onOpenWheel}
+                type="button"
                 className="mt-3 px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-black transition-all shadow-md flex items-center justify-center gap-1 cursor-pointer"
               >
-                <Gift className="w-3.5 h-3.5 animate-bounce" />
-                <span>{isRtl ? 'العب واكسب الآن' : 'Spin Wheel Now'}</span>
+                <span>{isRtl ? 'تصفح قائمة الطعام 🍕' : 'Browse Our Menu 🍕'}</span>
               </button>
             </div>
 
             {/* Dashed Rotated Stamp Badge */}
             <div className="w-24 h-24 sm:w-28 sm:h-28 bg-white text-red-600 rounded-full border-4 border-dashed border-red-600 flex items-center justify-center font-black text-lg sm:text-xl rotate-12 select-none shadow-xs ml-4 max-sm:hidden">
-              {isRtl ? 'مجاناً!' : 'FREE!'}
+              {isRtl ? 'طازج حار!' : 'HOT & FRESH!'}
             </div>
           </div>
 

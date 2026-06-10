@@ -121,6 +121,17 @@ export interface SiteSettings {
   disableIntro?: boolean;
   systemApiKey?: string;
   systemWebhookUrl?: string;
+  coupons?: DbCoupon[];
+}
+
+export interface DbCoupon {
+  code: string;
+  discountPercent: number;
+  limit: number;
+  usedCount: number;
+  expiryDate: string; // YYYY-MM-DD format
+  giftType: 'discount' | 'gift';
+  giftItem?: string; // e.g. PEPSI, FRIES, etc.
 }
 
 export interface ProductComment {

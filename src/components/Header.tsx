@@ -163,16 +163,7 @@ export default function Header({
             </span>
           </div>
 
-          {/* Lucky Wheel Fast Button */}
-          <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={onOpenWheel}
-            className="flex items-center gap-1 px-2 sm:px-2.5 py-1 sm:py-1.5 bg-amber-400 hover:bg-amber-300 text-black rounded-lg text-[10px] sm:text-xs font-black shadow-sm hover:shadow transition-all border border-black cursor-pointer"
-          >
-            <Gift className="w-3.5 h-3.5 animate-bounce text-black" />
-            <span className="hidden sm:inline uppercase">{isRtl ? 'عجلة الحظ' : 'Lucky Wheel'}</span>
-          </motion.button>
+
 
           {/* Lang Selector */}
           <button
@@ -181,6 +172,23 @@ export default function Header({
           >
             {lang === 'ar' ? 'EN' : 'العربية'}
           </button>
+
+          {/* Golden Lucky Wheel Scroll Redirect Button */}
+          <motion.button
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => {
+              const el = document.getElementById('lucky-wheel-section');
+              if (el) {
+                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+              }
+            }}
+            className="px-2 sm:px-3 py-1 sm:py-1.5 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black rounded-lg text-[10px] sm:text-xs transition shadow-sm hover:shadow-md cursor-pointer flex items-center gap-1 border border-amber-600"
+            title={isRtl ? 'اذهب لعجلة الحظ واربح جائزة!' : 'Go to Lucky Wheel & win prizes!'}
+          >
+            <Gift className="w-3.5 h-3.5 animate-bounce shrink-0" />
+            <span className="hidden sm:inline">{isRtl ? 'عجلة الحظ' : 'Lucky Wheel'}</span>
+          </motion.button>
 
           {/* Account Profile Trigger Button */}
           <motion.button

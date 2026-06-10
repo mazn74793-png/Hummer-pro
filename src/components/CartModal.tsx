@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { ShoppingCart, Trash2, Tag, ChevronLeft, MapPin, Phone, User, CheckCircle2, Ticket } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CartItem } from '../types';
+import { CartItem, SiteSettings } from '../types';
 import { auth, db, cleanFirestoreData } from '../firebase';
 import { signInAnonymously, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
 import { doc, getDoc, setDoc } from 'firebase/firestore';
@@ -24,6 +24,7 @@ interface CartModalProps {
   }) => Promise<void> | void;
   lang: 'ar' | 'en';
   couponCodeFromWheel?: string;
+  siteSettings?: SiteSettings;
 }
 
 export default function CartModal({
@@ -35,7 +36,8 @@ export default function CartModal({
   onClearCart,
   onCheckout,
   lang,
-  couponCodeFromWheel = ''
+  couponCodeFromWheel = '',
+  siteSettings
 }: CartModalProps) {
   const isRtl = lang === 'ar';
 
@@ -259,6 +261,46 @@ export default function CartModal({
   const applyCoupon = (codeToApply: string) => {
     const code = codeToApply.trim().toUpperCase();
     if (!code) return;
+
+    // Check custom dynamic coupons list first
+    const dynamicCoupons = siteSettings?.coupons || [];
+    const matchedDynamic = dynamicCoupons.find(c => c.code.trim().toUpperCase() === code);
+
+    if (matchedDynamic) {
+      const todayStr = new Date().toISOString().split('T')[0];
+      const isExpired = matchedDynamic.expiryDate && todayStr > matchedDynamic.expiryDate;
+      const isLimitExceeded = matchedDynamic.limit > 0 && matchedDynamic.usedCount >= matchedDynamic.limit;
+
+      if (isExpired) {
+        setCouponError(isRtl ? 'هذا الكوبون منتهي الصلاحية!' : 'This coupon has expired!');
+        setCouponApplied(false);
+        setDiscountPercent(0);
+        return;
+      }
+
+      if (isLimitExceeded) {
+        setCouponError(isRtl ? 'هذا الكوبون استنفذ عدد الاستخدامات الأقصى!' : 'This coupon has reached its limit!');
+        setCouponApplied(false);
+        setDiscountPercent(0);
+        return;
+      }
+
+      // Valid dynamic coupon!
+      if (matchedDynamic.giftType === 'discount') {
+        setDiscountPercent(matchedDynamic.discountPercent);
+        setDiscountPercentState(true, isRtl 
+          ? `تم تطبيق خصم بقيمة ${matchedDynamic.discountPercent}% بنجاح! 🎉` 
+          : `${matchedDynamic.discountPercent}% OFF coupon applied successfully! 🎉`
+        );
+      } else {
+        setDiscountPercent(0);
+        setDiscountPercentState(true, isRtl 
+          ? `كفو! كود الهدية فعال (${matchedDynamic.giftItem}) سيتم إرفاقها مجاناً بطلبك!` 
+          : `Awesome! Free gift (${matchedDynamic.giftItem}) will be wrapped with your meal!`
+        );
+      }
+      return;
+    }
 
     if (code === 'HUMMER10') {
       setDiscountPercent(10);
