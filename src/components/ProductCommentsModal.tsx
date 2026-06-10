@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { X, Star, User, Calendar, Trash2, MessageSquare, Shield, Clock } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MenuItem, ProductComment } from '../types';
-import { db, auth, cleanFirestoreData } from '../firebase';
+import { db, auth, cleanFirestoreData, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot, doc, deleteDoc, addDoc } from 'firebase/firestore';
 
 interface ProductCommentsModalProps {
@@ -81,6 +81,7 @@ export default function ProductCommentsModal({
     }, (error) => {
       console.error('Error fetching product comments:', error);
       setLoading(false);
+      handleFirestoreError(error, OperationType.LIST, 'product_comments');
     });
 
     return () => unsubscribe();
@@ -120,6 +121,7 @@ export default function ProductCommentsModal({
     } catch (err: any) {
       console.error('Error adding comment:', err);
       setErrorMessage(isRtl ? 'فشل إرسال التعليق لقاعدة البيانات.' : 'Failed to save review in database.');
+      handleFirestoreError(err, OperationType.CREATE, 'product_comments');
     } finally {
       setIsSubmitting(false);
     }
@@ -134,6 +136,7 @@ export default function ProductCommentsModal({
     } catch (err: any) {
       console.error('Error deleting comment:', err);
       alert(isRtl ? 'فشل المسح: لا تمتلك صلاحيات كافية' : 'Failed to delete: insufficient permissions.');
+      handleFirestoreError(err, OperationType.DELETE, `product_comments/${commentId}`);
     }
   };
 

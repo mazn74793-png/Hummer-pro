@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Flame, Plus, Check, Info, MessageSquare } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MenuItem, SizeOption } from '../types';
-import { db } from '../firebase';
+import { db, handleFirestoreError, OperationType } from '../firebase';
 import { collection, query, where, onSnapshot } from 'firebase/firestore';
 import ProductCommentsModal from './ProductCommentsModal';
 
@@ -29,7 +29,9 @@ export default function MenuCard({ item, onAddToCart, lang, isAdmin = false }: M
     const unsubscribe = onSnapshot(q, (snapshot) => {
       setCommentCount(snapshot.size);
     }, (error) => {
-      // Passive catch for guests
+      // Passive catch for guests, with standard error logging diagnostics
+      console.warn('Passive comments fetch warning:', error);
+      handleFirestoreError(error, OperationType.LIST, 'product_comments');
     });
     return () => unsubscribe();
   }, [item.id]);

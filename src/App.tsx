@@ -688,7 +688,7 @@ export default function App() {
     localStorage.setItem('hummer_menu_items', JSON.stringify(newItems));
 
     try {
-      await setDoc(doc(db, 'menu', 'global'), { items: newItems });
+      await setDoc(doc(db, 'menu', 'global'), cleanFirestoreData({ items: newItems }));
     } catch (err) {
       console.error("Failed saving menu items to Firestore:", err);
     }
@@ -737,7 +737,7 @@ export default function App() {
     }
 
     try {
-      await setDoc(doc(db, 'settings', 'global'), settingsToSave);
+      await setDoc(doc(db, 'settings', 'global'), cleanFirestoreData(settingsToSave));
     } catch (err) {
       console.error("Failed saving site settings to Firestore:", err);
     }
@@ -752,7 +752,7 @@ export default function App() {
     localStorage.setItem('hummer_branches', JSON.stringify(newBranches));
 
     try {
-      await setDoc(doc(db, 'branches', 'global'), { items: newBranches });
+      await setDoc(doc(db, 'branches', 'global'), cleanFirestoreData({ items: newBranches }));
     } catch (err) {
       console.error("Failed saving branches to Firestore:", err);
     }
