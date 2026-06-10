@@ -72,6 +72,12 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
   const stepIndex = STEPS.findIndex(s => s.status === currentStep);
   const activeStepObj = STEPS[stepIndex !== -1 ? stepIndex : 0];
 
+  const discountAmt = Number(order.discountAmount) || 0;
+  const deliveryF = Number(order.deliveryFee) || 0;
+  const totalP = Number(order.totalPrice) || 0;
+  const couponC = order.couponCode || '';
+  const calculatedSubtotal = Math.max(0, totalP - deliveryF + discountAmt);
+
   return (
     <div className="w-full bg-zinc-50 border border-zinc-200 rounded-[2.5rem] overflow-hidden relative shadow-sm animate-fadeIn" dir={isRtl ? 'rtl' : 'ltr'}>
       {/* Brand Navigation Header inside the order card */}
@@ -162,6 +168,30 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
 
             </div>
 
+            {/* Banner of active promo coupon code info */}
+            {couponC && (
+              <div className="bg-emerald-50 border border-emerald-250 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-3 text-right">
+                <div className="flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-emerald-600 flex items-center justify-center text-white text-xs font-black">
+                    %
+                  </div>
+                  <div>
+                    <h4 className="text-xs font-black text-emerald-950 font-sans">
+                      {isRtl ? 'تفعيل العرض والخصم بنجاح! 🎟️' : 'Promo coupon applied & processed! 🎟️'}
+                    </h4>
+                    <p className="text-[11px] text-emerald-700 font-extrabold mt-0.5">
+                      {isRtl 
+                        ? `العرض المفعل بطلبك: كود (${couponC}) ${discountAmt > 0 ? `| قيمة الخصم المباشر: ${discountAmt} ج.م` : ' | هدية مجانية مدمجة بطلبك!'}` 
+                        : `Promo: Code (${couponC}) ${discountAmt > 0 ? `| Direct Discount: -${discountAmt} EGP` : ' | Free bonus included!'}`}
+                    </p>
+                  </div>
+                </div>
+                <div className="px-3 py-1 bg-emerald-600 text-white font-mono text-[10px] font-black rounded-lg uppercase tracking-wider border border-emerald-700">
+                  {couponC}
+                </div>
+              </div>
+            )}
+
             {/* Timeline Visual Progress steps */}
             <div className="space-y-4 text-right">
               <h3 className="text-xs font-black text-zinc-400 uppercase tracking-widest">
@@ -243,40 +273,40 @@ export default function OrderTracker({ order, onCloseOrder, lang }: OrderTracker
                   {/* Price Calculations */}
                   <div className="pt-2 border-t border-zinc-200 space-y-1 text-zinc-400 font-bold text-right">
                     <div className="flex justify-between">
-                      <span className="font-mono text-zinc-900 font-black">{(order.totalPrice - order.deliveryFee + order.discountAmount).toFixed(1)} ج.م</span>
+                      <span className="font-mono text-zinc-900 font-black">{calculatedSubtotal.toFixed(1)} ج.م</span>
                       <span>{isRtl ? 'المجموع الأساسي:' : 'Subtotal:'}</span>
                     </div>
-                    {order.discountAmount > 0 && (
+                    {discountAmt > 0 && (
                       <div className="flex justify-between text-green-600 font-black">
-                        <span className="font-mono">-{order.discountAmount.toFixed(1)} ج.م</span>
+                        <span className="font-mono">-{discountAmt.toFixed(1)} ج.م</span>
                         <span>
                           {isRtl ? 'الخصومات المطبقة:' : 'Promo discount:'}
-                          {order.couponCode && (
+                          {couponC && (
                             <span className="mr-1.5 px-2 py-0.5 bg-green-500/10 text-green-700 font-mono text-[9px] rounded-md font-black border border-green-500/20 uppercase tracking-wider">
-                              Code: {order.couponCode}
+                              Code: {couponC}
                             </span>
                           )}
                         </span>
                       </div>
                     )}
-                    {order.couponCode && order.discountAmount === 0 && (
+                    {couponC && discountAmt === 0 && (
                       <div className="flex justify-between text-green-600 font-black">
                         <span>{isRtl ? 'هدية مفعلة ✔️' : 'Free Gift Active ✔️'}</span>
                         <span>
                           {isRtl ? 'العرض المطبق:' : 'Applied Promo:'}
                           <span className="mr-1.5 px-2 py-0.5 bg-green-500/10 text-green-700 font-mono text-[9px] rounded-md font-black border border-green-500/20 uppercase tracking-wider">
-                            Code: {order.couponCode}
+                            Code: {couponC}
                           </span>
                         </span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="font-mono text-zinc-900 font-black">+{order.deliveryFee} ج.م</span>
+                      <span className="font-mono text-zinc-900 font-black">+{deliveryF} ج.م</span>
                       <span>{isRtl ? 'توصيل هامر الصاروخي:' : 'Sonic Delivery Fee:'}</span>
                     </div>
                     
                     <div className="flex justify-between text-sm text-red-600 font-black pt-1.5 border-t border-zinc-200">
-                      <span className="font-mono text-base">{order.totalPrice} ج.م</span>
+                      <span className="font-mono text-base">{totalP} ج.م</span>
                       <span>{isRtl ? 'المجموع النهائي المطلوب للفرن:' : 'Final Payable Amount:'}</span>
                     </div>
                   </div>

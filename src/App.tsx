@@ -915,20 +915,22 @@ export default function App() {
     paymentMethod: 'cash' | 'card';
     items: CartItem[];
     scheduledDeliveryTime?: string;
+    couponCode?: string;
   }) => {
     let discountVal = 0;
     const subtotal = orderDetails.items.reduce((sum, item) => sum + item.pricePerUnit * item.quantity, 0);
 
+    const finalCouponCode = orderDetails.couponCode || chosenCouponCode || '';
     const dynamicCoupons = siteSettings?.coupons || [];
-    const matchedDynamic = dynamicCoupons.find(c => c.code.trim().toUpperCase() === chosenCouponCode.trim().toUpperCase());
+    const matchedDynamic = dynamicCoupons.find(c => c.code.trim().toUpperCase() === finalCouponCode.trim().toUpperCase());
 
     if (matchedDynamic) {
       if (matchedDynamic.giftType === 'discount') {
         discountVal = subtotal * (matchedDynamic.discountPercent / 100);
       }
-    } else if (chosenCouponCode === 'HUMMER10') {
+    } else if (finalCouponCode === 'HUMMER10') {
       discountVal = subtotal * 0.10;
-    } else if (chosenCouponCode === 'MEGA20') {
+    } else if (finalCouponCode === 'MEGA20') {
       discountVal = subtotal * 0.20;
     }
 
@@ -941,8 +943,8 @@ export default function App() {
     
     if (matchedDynamic && matchedDynamic.giftType === 'gift') {
       giftItemCode = matchedDynamic.giftItem || '';
-    } else if (chosenCouponCode === 'PEPSI' || chosenCouponCode === 'FRIES' || chosenCouponCode === 'COLESLAW') {
-      giftItemCode = chosenCouponCode;
+    } else if (finalCouponCode === 'PEPSI' || finalCouponCode === 'FRIES' || finalCouponCode === 'COLESLAW') {
+      giftItemCode = finalCouponCode;
     }
 
     if (giftItemCode) {
@@ -989,7 +991,7 @@ export default function App() {
       captainName,
       userId: currentUser?.uid || 'guest',
       scheduledDeliveryTime: orderDetails.scheduledDeliveryTime || null,
-      couponCode: chosenCouponCode || null
+      couponCode: finalCouponCode || null
     };
 
     // Write directly to our relational-structured persistent Firestore database

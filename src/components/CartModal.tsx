@@ -21,6 +21,7 @@ interface CartModalProps {
     paymentMethod: 'cash' | 'card';
     items: CartItem[];
     scheduledDeliveryTime?: string;
+    couponCode?: string;
   }) => Promise<void> | void;
   lang: 'ar' | 'en';
   couponCodeFromWheel?: string;
@@ -397,7 +398,8 @@ export default function CartModal({
         deliveryAddress: finalAddress,
         paymentMethod,
         items: cartItems,
-        scheduledDeliveryTime: finalScheduledTime
+        scheduledDeliveryTime: finalScheduledTime,
+        couponCode: couponCode ? couponCode.trim().toUpperCase() : undefined
       });
 
       setShowCheckoutForm(false);
