@@ -3,7 +3,7 @@ import {
   X, Check, Plus, Trash2, Edit2, Upload, AlertCircle, Maximize2, Minimize2, 
   Settings, Loader2, ChefHat, Bell, Wifi, ArrowDown, ArrowUp, RefreshCw, Eye,
   MapPin, Edit, EyeOff, LayoutTemplate, Building, TrendingUp, Users, Calendar, Award,
-  Database, HardDrive
+  Database, HardDrive, Key, Globe, Download
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -216,6 +216,108 @@ export default function AdminDashboard({
     }
   };
   
+  const [isBackingUp, setIsBackingUp] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+
+  const handleDownloadBackup = async () => {
+    setIsBackingUp(true);
+    try {
+      const { db } = await import('../firebase');
+      const { collection, getDocs } = await import('firebase/firestore');
+      
+      const snapshot = await getDocs(collection(db, 'orders'));
+      const allOrders: any[] = [];
+      snapshot.forEach(docSnap => {
+        allOrders.push({ id: docSnap.id, ...docSnap.data() });
+      });
+
+      const finalData = allOrders.length > 0 ? allOrders : orders;
+
+      // Sort by creation desc
+      finalData.sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(finalData, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", `hummer_restaurant_orders_backup_${new Date().toISOString().split('T')[0]}.json`);
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+
+      alert(isRtl 
+        ? `✓ تم تصدير عدد (${finalData.length}) سجل طلبات بنجاح بصيغة JSON!` 
+        : `✓ Successfully exported (${finalData.length}) total order records in JSON!`);
+    } catch (err: any) {
+      console.error("Backup trigger failed:", err);
+      try {
+        const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(orders, null, 2));
+        const downloadAnchor = document.createElement('a');
+        downloadAnchor.setAttribute("href", dataStr);
+        downloadAnchor.setAttribute("download", `hummer_active_orders_fallback_${new Date().toISOString().split('T')[0]}.json`);
+        document.body.appendChild(downloadAnchor);
+        downloadAnchor.click();
+        downloadAnchor.remove();
+        alert(isRtl ? 'تم تصدير سجلات طابور المطبخ كملف بديل.' : 'Exported active dashboard queue orders as fallback.');
+      } catch (innerErr) {
+        alert(isRtl ? 'حدث خطأ أثناء تصدير الملف الاحتياطي' : 'An error occurred while exporting backup file');
+      }
+    } finally {
+      setIsBackingUp(false);
+    }
+  };
+
+  const handleRestoreBackup = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!confirm(isRtl 
+      ? '⚠️ تحذير: هل أنت متأكد من استعادة الطلبات من هذا الملف الاحتياطي السحابي؟ سيتم دمجها مع الطلبات الحالية وتثبيتها حياً في Firestore.' 
+      : '⚠️ WARNING: Are you sure you want to restore and upload orders from this offline file? They will merge with live Firestore database records.')) {
+      e.target.value = '';
+      return;
+    }
+
+    setIsRestoring(true);
+    try {
+      const text = await file.text();
+      const parsedOrders = JSON.parse(text);
+
+      if (!Array.isArray(parsedOrders)) {
+        throw new Error(isRtl ? 'صيغة الملف غير صالحة. الملف يجب أن يحتوي على مصفوفة JSON للطلبات.' : 'Invalid file format. Must be a valid JSON array of orders.');
+      }
+
+      for (const order of parsedOrders) {
+        if (!order.id || !order.customerName || !order.createdAt) {
+          throw new Error(isRtl ? 'بيانات تالفة أو ناقصة في ملف النسخ الاحتياطي.' : 'Missing required properties in backup structures.');
+        }
+      }
+
+      const { db, cleanFirestoreData } = await import('../firebase');
+      const { doc, setDoc } = await import('firebase/firestore');
+
+      let restoredCount = 0;
+      for (const order of parsedOrders) {
+        const cleanData = cleanFirestoreData({ ...order });
+        await setDoc(doc(db, 'orders', order.id), cleanData);
+        restoredCount++;
+      }
+
+      alert(isRtl 
+        ? `✓ تم بنجاح استعادة ورفع عدد (${restoredCount}) طلب لقسم الأرشيف في قاعدة البيانات!` 
+        : `✓ Successfully restored and uploaded (${restoredCount}) history orders to live database!`);
+      
+      scanDatabaseOverview();
+    } catch (err: any) {
+      console.error('Error during restoration:', err);
+      alert(isRtl 
+        ? `فشل الاستعادة: يرجى التأكد من اختيار ملف JSON أصل وصحيح تم تنزيله مسبقاً.\nالتفاصيل: ${err.message || err}` 
+        : `Restoration failed: Please make sure the JSON file matches correctly.\nDetail: ${err.message || err}`);
+    } finally {
+      setIsRestoring(false);
+      e.target.value = '';
+    }
+  };
+
   // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'
   const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'>('orders');
 
@@ -1085,6 +1187,49 @@ export default function AdminDashboard({
                 <span>{dbStats.clearingState === 'users' ? '...' : (isRtl ? 'تنفيذ الفرز 🧹' : 'Execute')}</span>
                 <span>{isRtl ? '🧹 مسح حسابات الزوار المؤقتة' : 'Wipe guest accounts'}</span>
               </button>
+
+              {/* Offline Backup & Restore Section */}
+              <div className="border-t border-zinc-850/60 pt-2.5 mt-2 space-y-1.5" dir="rtl">
+                <span className="text-[9px] font-black text-amber-500 block text-right">
+                  {isRtl ? '💾 النسخ الاحتياطي للطوارئ (JSON):' : '💾 Emergency Data Backup (JSON):'}
+                </span>
+                
+                <button
+                  type="button"
+                  onClick={handleDownloadBackup}
+                  disabled={isBackingUp}
+                  className="w-full py-2 px-3 bg-zinc-950 hover:bg-zinc-900 text-amber-200 hover:text-white border border-zinc-800 text-[10px] font-black rounded-xl transition cursor-pointer flex items-center justify-between disabled:opacity-50"
+                >
+                  {isBackingUp ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-amber-500" />
+                  ) : (
+                    <Download className="w-3.5 h-3.5 text-amber-500" />
+                  )}
+                  <span>{isRtl ? 'تنزيل نسخة احتياطية لكافة الطلبات' : 'Download Complete Orders Backup'}</span>
+                </button>
+
+                <label className="w-full py-2 px-3 bg-zinc-950 hover:bg-zinc-905 text-zinc-300 hover:text-white border border-zinc-800 text-[10px] font-black rounded-xl transition cursor-pointer flex items-center justify-between disabled:opacity-50 select-none">
+                  {isRestoring ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin text-emerald-500" />
+                  ) : (
+                    <Upload className="w-3.5 h-3.5 text-emerald-550" />
+                  )}
+                  <span>{isRtl ? 'رفع واستعادة نسخة احتياطية مسبقة' : 'Restore and Upload From JSON File'}</span>
+                  <input
+                    type="file"
+                    accept=".json"
+                    onChange={handleRestoreBackup}
+                    disabled={isRestoring}
+                    className="hidden"
+                  />
+                </label>
+                
+                <p className="text-[8px] text-zinc-500 leading-normal text-right font-medium">
+                  {isRtl 
+                    ? 'نصيحة: يمكنك تحميل كافة المبيعات والطلبات محلياً ومسح أرشيفها لتفريغ القيمة السحابية، ورفعها مجدداً في أي وقت لاحق بسهولة تامة!'
+                    : 'Tip: Safely backup all database orders offline to free up cloud storage capacity, then merge and re-upload any time down the road!'}
+                </p>
+              </div>
             </div>
           </div>
         </div>
@@ -2260,6 +2405,63 @@ export default function AdminDashboard({
                           {isRtl 
                             ? 'معلومة: لتوفير استهلاك باقة الجوال، سيعمل هذا الفيديو في الخلفية عندما يفتح العميل الموقع لأول مرة فقط، ثم سنحفظ حالة المشاهدة لكي لا يظهر مجدداً.'
                             : 'Hint: To preserve mobile data, this intro launches strictly on first-time opens only, saving play status inside client storage.'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Part G: POS & RESTAURANT CASHIER SYSTEM INTEGRATION (ربط نظام الكاشير والمستودعات) */}
+                    <div className="bg-zinc-950/50 p-5 rounded-2xl border border-zinc-850 space-y-4 text-right">
+                      <h5 className="text-xs font-black text-emerald-500 uppercase tracking-widest flex items-center gap-1.5 justify-end font-sans">
+                        <span>{isRtl ? '٧. ربط أنظمة الكاشير الخارجية والمستودعات (POS / ERP Integration)' : '7. POS & ERP Cashier Integration'}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                      </h5>
+
+                      <p className="text-[10px] text-zinc-400 leading-relaxed">
+                        {isRtl 
+                          ? 'يمكنك ربط موقعك الإلكتروني بنظام الكاشير الداخلي للمطعم أو نظام محاسبي خارجي مباشرة. عند تعيين الرابط والمفتاح ستقوم المنصة بإحالة بيانات كل طلب جديد تلقائياً كـ Webhook Payload لحظياً وبثوانٍ معدودة!' 
+                          : 'Connect your store directly with your physical POS cashier machine or custom ERP. When configured, newly placed orders will be instantly dispatched as standard Webhook REST payloads!'}
+                      </p>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right" dir="rtl">
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-zinc-300 block flex items-center gap-1 justify-end">
+                            <span>{isRtl ? 'مفتاح النظام البرمجي (Integration API Key):' : 'Integration API Key:'}</span>
+                            <Key className="w-3.5 h-3.5 text-emerald-500/80 shrink-0" />
+                          </label>
+                          <input
+                            type="text"
+                            value={editedSettings?.systemApiKey || ''}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, systemApiKey: e.target.value })}
+                            placeholder="e.g. hummer_pos_live_key_xyz123..."
+                            className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-semibold text-white rounded-xl outline-none focus:border-emerald-500 ltr text-left"
+                          />
+                        </div>
+
+                        <div className="space-y-1.5">
+                          <label className="text-[10px] font-black text-zinc-300 block flex items-center gap-1 justify-end font-sans">
+                            <span>{isRtl ? 'رابط استقبال الطلبات (Webhook endpoint URL):' : 'Webhook Endpoint URL:'}</span>
+                            <Globe className="w-3.5 h-3.5 text-emerald-500/80 shrink-0" />
+                          </label>
+                          <input
+                            type="text"
+                            value={editedSettings?.systemWebhookUrl || ''}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, systemWebhookUrl: e.target.value })}
+                            placeholder="https://your-pos-system.com/api/v1/orders"
+                            className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-semibold text-white rounded-xl outline-none focus:border-emerald-500 ltr text-left"
+                          />
+                        </div>
+                      </div>
+
+                      {/* Webhook tester / developer tools info */}
+                      <div className="bg-zinc-900/60 p-3.5 rounded-xl border border-zinc-800 text-[10px] font-semibold text-zinc-400 space-y-1 text-right">
+                        <p className="text-zinc-300 font-bold flex items-center gap-1 justify-end font-sans">
+                          <span>{isRtl ? '📡 آلية نقل الطلبات التلقائية:' : '📡 Automated POS Dispatch Engine:'}</span>
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-ping"></span>
+                        </p>
+                        <p className="leading-relaxed">
+                          {isRtl
+                            ? 'بمجرد إدخال البيانات وحفظ التعديلات، تترجم الواجهة الخلفية كل طلب من الزبون، شامل كافة محتويات السلة والوجبات، والأسعار وخصومات الأكواد، وتفاصيل الطيار والموقع الجغرافي، وترسله بصيغة JSON تفاعلية عبر بروتوكول POST آمن.'
+                            : 'On checkout confirmation, the engine translates client selections, active codes, delivery tags, and precise locations, dispatching them securely via standard JSON HTTPS POST transactions.'}
                         </p>
                       </div>
                     </div>

@@ -53,7 +53,9 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   promoBannerAr: 'عروض الصيف من هامر! خصم ١٠٪ على كل الكريبات بـ كود HUMMER10',
   promoBannerEn: 'Summer Deals! 10% OFF all crepes with code HUMMER10',
   introVideoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41611-large.mp4',
-  disableIntro: false,
+  disableIntro: true,
+  systemApiKey: '',
+  systemWebhookUrl: '',
 };
 
 // High Fidelity Audio Synthesis for premium interactive sounds with 100% reliability (bypasses static files)
@@ -936,6 +938,28 @@ export default function App() {
         riderPhone: ''
       });
       await setDoc(doc(db, 'orders', docId), orderPayloadToSave);
+      
+      // Dispatch webhook integration asynchronously
+      if (siteSettings?.systemWebhookUrl) {
+        fetch(siteSettings.systemWebhookUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": siteSettings.systemApiKey ? `Bearer ${siteSettings.systemApiKey}` : "",
+            "X-Hummer-API-Key": siteSettings.systemApiKey || ""
+          },
+          body: JSON.stringify({
+            event: "order.placed",
+            timestamp: new Date().toISOString(),
+            source: "hummer_website",
+            order: orderPayloadToSave
+          })
+        }).then(res => {
+          console.log("POS Webhook Dispatch success status:", res.status);
+        }).catch(err => {
+          console.error("Failed to route order webhook to physical POS system:", err);
+        });
+      }
       
       // Only set success states and empty the basket if database write compiles successfully
       setJustPlacedOrder(placedOrder);

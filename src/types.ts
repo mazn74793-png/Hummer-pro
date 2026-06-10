@@ -119,6 +119,8 @@ export interface SiteSettings {
   logoUrl?: string;
   introVideoUrl?: string;
   disableIntro?: boolean;
+  systemApiKey?: string;
+  systemWebhookUrl?: string;
 }
 
 export interface ProductComment {

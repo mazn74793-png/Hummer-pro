@@ -1,12 +1,15 @@
-import { initializeApp } from 'firebase/app';
+import { initializeApp, setLogLevel } from 'firebase/app';
 import { getAuth, GoogleAuthProvider } from 'firebase/auth';
 import { initializeFirestore, getFirestore } from 'firebase/firestore';
 import firebaseConfig from '../firebase-applet-config.json';
 
+// Set Firebase log level to 'error' to suppress transient WebChannel stream transport warning logs in proxy/iframe environments
+setLogLevel('error');
+
 // Initialize Firebase app with our secure credentials
 const app = initializeApp(firebaseConfig);
 
-// Initialize Auth & Firestore with specific Database ID and force HTTP long polling to prevent RPC Listen connection warnings 
+// Initialize Auth & Firestore with specific Database ID, forcing HTTP long polling to prevent connection warning noise
 export const db = initializeFirestore(app, {
   experimentalForceLongPolling: true
 }, firebaseConfig.firestoreDatabaseId);
