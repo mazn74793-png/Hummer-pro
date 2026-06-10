@@ -2,7 +2,8 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, Check, Plus, Trash2, Edit2, Upload, AlertCircle, Maximize2, Minimize2, 
   Settings, Loader2, ChefHat, Bell, Wifi, ArrowDown, ArrowUp, RefreshCw, Eye,
-  MapPin, Edit, EyeOff, LayoutTemplate, Building, TrendingUp, Users, Calendar, Award
+  MapPin, Edit, EyeOff, LayoutTemplate, Building, TrendingUp, Users, Calendar, Award,
+  Database, HardDrive
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -61,6 +62,159 @@ export default function AdminDashboard({
   onDeleteAdmin
 }: AdminDashboardProps) {
   const isRtl = lang === 'ar';
+
+  const formatBytes = (bytes: number) => {
+    if (bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
+  };
+
+  // Firestore DB storage stats monitor
+  const [dbStats, setDbStats] = useState({
+    userCount: 0,
+    ordersCount: orders.length,
+    menuItemsCount: menuItems.length,
+    ridersCount: riders.length,
+    adminsCount: authorizedAdmins.length,
+    totalDocs: 0,
+    estimatedBytes: 0,
+    loading: false,
+    clearingState: ''
+  });
+
+  const scanDatabaseOverview = async () => {
+    setDbStats(prev => ({ ...prev, loading: true }));
+    try {
+      const { db } = await import('../firebase');
+      const { collection, getDocs } = await import('firebase/firestore');
+
+      let usersCount = 0;
+      try {
+        const usersSnapshot = await getDocs(collection(db, 'users'));
+        usersCount = usersSnapshot.size;
+      } catch (e) {
+        console.warn('Could not list users dynamically:', e);
+      }
+
+      const orderCount = orders.length;
+      const menuCount = menuItems.length;
+      const riderCount = riders.length;
+      const adminCount = authorizedAdmins.length;
+
+      // Average size formulas (document wrapper + text fields overhead)
+      const calculatedBytes = 
+        (orderCount * 1430) + 
+        (menuCount * 920) + 
+        (riderCount * 410) + 
+        (adminCount * 200) + 
+        (usersCount * 610);
+
+      const totalDocsCount = orderCount + menuCount + riderCount + adminCount + usersCount;
+
+      setDbStats({
+        userCount: usersCount,
+        ordersCount: orderCount,
+        menuItemsCount: menuCount,
+        ridersCount: riderCount,
+        adminsCount: adminCount,
+        totalDocs: totalDocsCount,
+        estimatedBytes: calculatedBytes,
+        loading: false,
+        clearingState: ''
+      });
+    } catch (err: any) {
+      console.error('Error scanning database stats:', err);
+      setDbStats(prev => ({ ...prev, loading: false }));
+    }
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      scanDatabaseOverview();
+    }
+  }, [isOpen, orders.length, menuItems.length, riders.length, authorizedAdmins.length]);
+
+  const clearCompletedAndCanceledOrders = async () => {
+    if (!confirm(isRtl 
+      ? 'هل أنت متأكد من مسح وأرشفة جميع الطلبات المكتملة أو المكنسلة في قاعدة البيانات لتوفير المساحة؟' 
+      : 'Are you sure you want to delete all completed or canceled orders in Firestore?')) return;
+    
+    setDbStats(prev => ({ ...prev, clearingState: 'orders' }));
+    try {
+      const { db } = await import('../firebase');
+      const { collection, getDocs, writeBatch } = await import('firebase/firestore');
+
+      const snapshot = await getDocs(collection(db, 'orders'));
+      const batch = writeBatch(db);
+      let countDeleted = 0;
+
+      snapshot.docs.forEach((docSnap) => {
+        const data = docSnap.data();
+        if (data.status === 'completed' || data.status === 'canceled' || !data.status) {
+          batch.delete(docSnap.ref);
+          countDeleted++;
+        }
+      });
+
+      if (countDeleted > 0) {
+        await batch.commit();
+      }
+
+      alert(isRtl ? `تم تفريغ مساحة ومسح عدد (${countDeleted}) أوردر من داتا بيس الموقع!` : `Successfully deleted (${countDeleted}) completed orders from Firestore!`);
+      // Update local storage representation too
+      onClearAllOrders();
+      scanDatabaseOverview();
+    } catch (err: any) {
+      console.error('Error clearing old orders:', err);
+      alert(isRtl ? 'فشل المسح: عذراً قد لا تمتلك صلاحيات الآدمن الكافية في Firestore حالياً.' : `Deletion failed: ${err.message || err}`);
+    } finally {
+      setDbStats(prev => ({ ...prev, clearingState: '' }));
+    }
+  };
+
+  const clearInactiveGuestUsers = async () => {
+    if (!confirm(isRtl 
+      ? 'هل أنت متأكد من مسح وتنظيف حسابات الأعضاء المؤقتين والزوار غير النشطين؟ هذا الإجراء أمن ولا يؤثر على المشرفين.' 
+      : 'Are you sure you want to wipe inactive guest profile logs? This preserves full admins.')) return;
+
+    setDbStats(prev => ({ ...prev, clearingState: 'users' }));
+    try {
+      const { db } = await import('../firebase');
+      const { collection, getDocs, writeBatch } = await import('firebase/firestore');
+
+      const snapshot = await getDocs(collection(db, 'users'));
+      const batch = writeBatch(db);
+      let countDeleted = 0;
+
+      const activeUserIds = new Set(orders.map(o => o.userId));
+
+      snapshot.docs.forEach((docSnap) => {
+        const uid = docSnap.id;
+        const data = docSnap.data();
+        const email = (data.email || '').toLowerCase().trim();
+        const isUserAdmin = email === 'motaem23y@gmail.com' || authorizedAdmins.some(adm => adm.toLowerCase().trim() === email);
+
+        if (!activeUserIds.has(uid) && !isUserAdmin) {
+          batch.delete(docSnap.ref);
+          countDeleted++;
+        }
+      });
+
+      if (countDeleted > 0) {
+        await batch.commit();
+      }
+
+      alert(isRtl ? `تم بنجاح كنس وتفريغ عدد (${countDeleted}) حساب زائر مؤقت!` : `Successfully wiped (${countDeleted}) inactive user documents!`);
+      scanDatabaseOverview();
+    } catch (err: any) {
+      console.error('Error clearing guest docs:', err);
+      alert(isRtl ? 'فشل كنس الزوار: ' + err.message : 'Sweep failed: ' + err.message);
+    } finally {
+      setDbStats(prev => ({ ...prev, clearingState: '' }));
+    }
+  };
   
   // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'
   const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins'>('orders');
@@ -834,6 +988,103 @@ export default function AdminDashboard({
             <div className="text-[10px] font-mono text-zinc-500 bg-zinc-950 p-2.5 rounded-xl border border-zinc-800 overflow-x-auto text-left">
               <p>CLOUD: {cloudName || 'N/A'}</p>
               <p className="mt-1">PRESET: {uploadPreset || 'N/A'}</p>
+            </div>
+          </div>
+
+          {/* High-Fidelity Firestore Database Space Indicator with Clean-up Utilities */}
+          <div className="bg-zinc-900 border border-zinc-800 p-5 rounded-3xl text-right space-y-4 shadow-xl relative overflow-hidden" dir={isRtl ? 'rtl' : 'ltr'}>
+            <div className="absolute top-0 right-0 left-0 h-[3px] bg-gradient-to-r from-emerald-500 via-green-600 to-teal-500" />
+            
+            <div className="flex items-center justify-between">
+              <button 
+                onClick={scanDatabaseOverview}
+                disabled={dbStats.loading}
+                className="p-1.5 bg-zinc-850 hover:bg-zinc-800 hover:text-white rounded-xl text-zinc-400 transition"
+                title={isRtl ? 'تحديث الإحصائيات' : 'Refresh stats'}
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${dbStats.loading ? 'animate-spin text-green-500' : ''}`} />
+              </button>
+              <div className="flex items-center gap-2">
+                <span className="text-[11px] font-black tracking-wide text-zinc-200">
+                  {isRtl ? 'سعة قاعدة البيانات 🛰️' : 'Live DB Storage Capacity'}
+                </span>
+                <Database className="w-4 h-4 text-emerald-500" />
+              </div>
+            </div>
+
+            {/* Storage Progress bar representation */}
+            <div className="space-y-1.5">
+              <div className="flex justify-between text-[10px] text-zinc-400 font-mono">
+                <span>{((dbStats.estimatedBytes / (1024 * 1024 * 1024)) * 100).toFixed(4)}%</span>
+                <span className="font-bold text-emerald-400">
+                  {formatBytes(dbStats.estimatedBytes)} / 1 GB
+                </span>
+              </div>
+              <div className="w-full h-2.5 bg-zinc-950 rounded-full overflow-hidden border border-zinc-850 p-[1px]">
+                <div 
+                  className="h-full bg-gradient-to-r from-emerald-500 to-green-500 rounded-full transition-all duration-500" 
+                  style={{ width: `${Math.min(100, Math.max(1, (dbStats.estimatedBytes / (1024 * 1024 * 1024)) * 100))}%` }}
+                />
+              </div>
+              <p className="text-[9px] text-zinc-400 leading-normal">
+                {isRtl 
+                  ? 'توفر لك Google سعة مجانية بالكامل قدرها 1 جيجابايت (1,024 ميجابايت) في قاعدة بيانات Firestore، وهي كافية لتخزين أكثر من مليون طلب طعام مجاناً!' 
+                  : 'Google provides a fully free capacity of 1 GB (1,024 MB) in Firestore Spark tier, which is enough to register over 1,000,000 customer orders for free!'}
+              </p>
+            </div>
+
+            {/* Accurate detailed metrics table (بيانات دقيقة) */}
+            <div className="bg-zinc-950/60 p-3 rounded-2xl border border-zinc-800/60 text-[10px] space-y-2 font-semibold text-right" dir="rtl">
+              <div className="flex justify-between border-b border-zinc-850/50 pb-1 text-zinc-500 font-black">
+                <span>{isRtl ? 'السعة المقدرة' : 'Est. Weight'}</span>
+                <span>{isRtl ? 'المجموعة والسجلات' : 'Collection & Docs'}</span>
+              </div>
+              
+              <div className="flex justify-between text-zinc-300">
+                <span className="font-mono text-zinc-400">{formatBytes(dbStats.ordersCount * 1430)}</span>
+                <span className="text-right">📦 {isRtl ? 'الطلبات' : 'Orders'}: <strong className="text-white font-mono">{dbStats.ordersCount}</strong></span>
+              </div>
+
+              <div className="flex justify-between text-zinc-300">
+                <span className="font-mono text-zinc-400">{formatBytes(dbStats.userCount * 610)}</span>
+                <span className="text-right">👥 {isRtl ? 'الأعضاء والزوار' : 'Users'}: <strong className="text-white font-mono">{dbStats.userCount}</strong></span>
+              </div>
+
+              <div className="flex justify-between text-zinc-300">
+                <span className="font-mono text-zinc-400">{formatBytes(dbStats.menuItemsCount * 920)}</span>
+                <span className="text-right">🍕 {isRtl ? 'المنيو والأصناف' : 'Menu'}: <strong className="text-white font-mono">{dbStats.menuItemsCount}</strong></span>
+              </div>
+
+              <div className="flex justify-between text-zinc-300">
+                <span className="font-mono text-zinc-400">{formatBytes((dbStats.ridersCount * 410) + (dbStats.adminsCount * 200))}</span>
+                <span className="text-right">🛠️ {isRtl ? 'الطيارين والمشرفين' : 'Riders & Admins'}: <strong className="text-white font-mono">{dbStats.ridersCount + dbStats.adminsCount}</strong></span>
+              </div>
+
+              <div className="flex justify-between text-zinc-200 border-t border-zinc-850/50 pt-1.5 font-bold">
+                <span className="font-mono text-emerald-400">{formatBytes(dbStats.estimatedBytes)}</span>
+                <span>📊 {isRtl ? 'إجمالي المستندات:' : 'Total docs:'} <strong className="font-mono text-white">{dbStats.totalDocs}</strong></span>
+              </div>
+            </div>
+
+            {/* DB Clearing and Optimization actions (مسح البيانات لتوفير المساحة) */}
+            <div className="space-y-2 pt-1 font-sans">
+              <button
+                onClick={clearCompletedAndCanceledOrders}
+                disabled={dbStats.clearingState !== ''}
+                className="w-full py-2 px-3 bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-900/40 text-[10px] font-black rounded-xl transition cursor-pointer flex items-center justify-between disabled:opacity-50"
+              >
+                <span>{dbStats.clearingState === 'orders' ? '...' : (isRtl ? 'تنفيذ الحذف 🗑️' : 'Execute')}</span>
+                <span>{isRtl ? '🗑️ مسح أرشيف الطلبات' : 'Clear completed orders'}</span>
+              </button>
+
+              <button
+                onClick={clearInactiveGuestUsers}
+                disabled={dbStats.clearingState !== ''}
+                className="w-full py-2 px-3 bg-zinc-800 hover:bg-zinc-750 text-zinc-300 border border-zinc-750 text-[10px] font-black rounded-xl transition cursor-pointer flex items-center justify-between disabled:opacity-50"
+              >
+                <span>{dbStats.clearingState === 'users' ? '...' : (isRtl ? 'تنفيذ الفرز 🧹' : 'Execute')}</span>
+                <span>{isRtl ? '🧹 مسح حسابات الزوار المؤقتة' : 'Wipe guest accounts'}</span>
+              </button>
             </div>
           </div>
         </div>

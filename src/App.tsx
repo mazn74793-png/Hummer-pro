@@ -252,16 +252,29 @@ export default function App() {
         setAuthorizedAdmins(emailList);
       },
       (err) => {
-        console.warn('Could not load dynamic admin emails:', err);
+        // Silently catch expected permission errors for guest clients to avoid noise
       }
     );
     return unsubAdmins;
   }, []);
 
-  // Set up real-time Firebase Auth listener
+  // Set up real-time Firebase Auth listener with offline fallback
   useEffect(() => {
     const unsubAuth = onAuthStateChanged(auth, (usr) => {
-      setCurrentUser(usr);
+      if (usr) {
+        setCurrentUser(usr);
+      } else {
+        const savedVirtual = localStorage.getItem('hummer_virtual_user');
+        if (savedVirtual) {
+          try {
+            setCurrentUser(JSON.parse(savedVirtual));
+          } catch (e) {
+            setCurrentUser(null);
+          }
+        } else {
+          setCurrentUser(null);
+        }
+      }
     });
     return unsubAuth;
   }, []);

@@ -68,11 +68,25 @@ export default function UserProfileModal({
 
   useEffect(() => {
     const unsub = auth.onAuthStateChanged((usr) => {
-      setCurrentUser(usr);
       if (usr) {
+        setCurrentUser(usr);
         loadUserProfile(usr.uid, usr.email || '', usr.displayName || '');
       } else {
-        setProfileData(null);
+        // Fallback: check if there is a virtual local user in localStorage if anonymous authentication fails or isn't enabled
+        const savedVirtual = localStorage.getItem('hummer_virtual_user');
+        if (savedVirtual) {
+          try {
+            const parsed = JSON.parse(savedVirtual);
+            setCurrentUser(parsed);
+            loadUserProfile(parsed.uid, 'fastfoodie@hummer.app', parsed.displayName || 'أكيل هامر');
+          } catch (e) {
+            setCurrentUser(null);
+            setProfileData(null);
+          }
+        } else {
+          setCurrentUser(null);
+          setProfileData(null);
+        }
       }
     });
     return unsub;
@@ -80,6 +94,7 @@ export default function UserProfileModal({
 
   const loadUserProfile = async (uid: string, email: string, defaultName: string) => {
     setIsLoadingProfile(true);
+    let loaded = false;
     try {
       const docRef = doc(db, 'users', uid);
       const snapshot = await getDoc(docRef);
@@ -92,6 +107,8 @@ export default function UserProfileModal({
         if (!data.phone) {
           setIsEditing(true);
         }
+        localStorage.setItem('hummer_virtual_profile', JSON.stringify(data));
+        loaded = true;
       } else {
         // Create initial default profile on first-time login
         const newProfile: UserProfileData = {
@@ -102,17 +119,42 @@ export default function UserProfileModal({
           addresses: [],
           createdAt: new Date().toISOString()
         };
-        await setDoc(docRef, newProfile);
+        try {
+          await setDoc(docRef, newProfile);
+        } catch (dbErr) {
+          console.warn('Could not write profile to Firestore:', dbErr);
+        }
         setProfileData(newProfile);
         setFormName(newProfile.name);
         setFormPhone('');
         setIsEditing(true); // Forced edit on first login to complete details!
+        localStorage.setItem('hummer_virtual_profile', JSON.stringify(newProfile));
+        loaded = true;
       }
     } catch (err) {
       console.error('Error loading user profile:', err);
-    } finally {
-      setIsLoadingProfile(false);
     }
+
+    if (!loaded) {
+      // Offline/virtual cached fallback
+      const cached = localStorage.getItem('hummer_virtual_profile');
+      if (cached) {
+        try {
+          const data = JSON.parse(cached) as UserProfileData;
+          if (data.uid === uid) {
+            setProfileData(data);
+            setFormName(data.name);
+            setFormPhone(data.phone || '');
+            if (!data.phone) {
+              setIsEditing(true);
+            }
+          }
+        } catch (e) {
+          console.error('Error reading cached profile:', e);
+        }
+      }
+    }
+    setIsLoadingProfile(false);
   };
 
   const handleGoogleSignIn = async () => {
@@ -142,10 +184,23 @@ export default function UserProfileModal({
 
     setIsLoadingProfile(true);
     try {
-      const userCredential = await signInAnonymously(auth);
-      const uid = userCredential.user.uid;
+      let uid = '';
+      let isVirtual = false;
 
-      const docRef = doc(db, 'users', uid);
+      try {
+        const userCredential = await signInAnonymously(auth);
+        uid = userCredential.user.uid;
+      } catch (authErr: any) {
+        console.warn('signInAnonymously failed in ProfileModal, defaulting to virtual:', authErr);
+        let savedVirtualUid = localStorage.getItem('hummer_virtual_uid');
+        if (!savedVirtualUid) {
+          savedVirtualUid = 'virt-' + Math.random().toString(36).substr(2, 9) + '-' + Date.now();
+          localStorage.setItem('hummer_virtual_uid', savedVirtualUid);
+        }
+        uid = savedVirtualUid;
+        isVirtual = true;
+      }
+
       const newProfile: UserProfileData = {
         uid,
         name: nameVal,
@@ -155,7 +210,29 @@ export default function UserProfileModal({
         createdAt: new Date().toISOString()
       };
 
-      await setDoc(docRef, newProfile);
+      // Cache locally immediately 
+      localStorage.setItem('hummer_virtual_profile', JSON.stringify(newProfile));
+
+      if (isVirtual) {
+        const virtualUser = {
+          uid,
+          email: 'fastfoodie@hummer.app',
+          displayName: nameVal,
+          isAnonymous: true,
+          emailVerified: false
+        };
+        localStorage.setItem('hummer_virtual_user', JSON.stringify(virtualUser));
+        setCurrentUser(virtualUser as any);
+      }
+
+      // Safe Firestore set doc - catch permission/restricted errors safely
+      try {
+        const docRef = doc(db, 'users', uid);
+        await setDoc(docRef, newProfile);
+      } catch (dbErr: any) {
+        console.warn('Could not write profile to Firestore:', dbErr);
+      }
+
       setProfileData(newProfile);
       setFormName(newProfile.name);
       setFormPhone(newProfile.phone);
@@ -170,6 +247,9 @@ export default function UserProfileModal({
 
   const handleSignOut = async () => {
     try {
+      localStorage.removeItem('hummer_virtual_user');
+      localStorage.removeItem('hummer_virtual_profile');
+      localStorage.removeItem('hummer_virtual_uid');
       await signOut(auth);
       onClose();
     } catch (err) {
