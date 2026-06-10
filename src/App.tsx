@@ -935,6 +935,39 @@ export default function App() {
     const deliveryFee = 25;
     const finalPrice = Math.max(0, subtotal - discountVal + deliveryFee);
 
+    // Prepare food items, including any gift won on the wheel
+    const finalItems = [...orderDetails.items];
+    let giftItemCode = '';
+    
+    if (matchedDynamic && matchedDynamic.giftType === 'gift') {
+      giftItemCode = matchedDynamic.giftItem || '';
+    } else if (chosenCouponCode === 'PEPSI' || chosenCouponCode === 'FRIES' || chosenCouponCode === 'COLESLAW') {
+      giftItemCode = chosenCouponCode;
+    }
+
+    if (giftItemCode) {
+      const giftLabelAr = giftItemCode === 'PEPSI' ? 'بيبسي مثلج مجاناً (هدية عجلة الحظ) 🥤' 
+                        : giftItemCode === 'FRIES' ? 'بطاطس مقلية مجانية (هدية عجلة الحظ) 🍟' 
+                        : 'سلطة كول سلو هدية (هدية عجلة الحظ) 🥗';
+      const giftLabelEn = giftItemCode === 'PEPSI' ? 'Free Ice Pepsi (Lucky Wheel Gift) 🥤' 
+                        : giftItemCode === 'FRIES' ? 'Free French Fries (Lucky Wheel Gift) 🍟' 
+                        : 'Free Coleslaw Salad (Lucky Wheel Gift) 🥗';
+
+      finalItems.push({
+        id: `gift-${Date.now()}-${giftItemCode}`,
+        menuItemId: `gift-${giftItemCode.toLowerCase()}`,
+        nameAr: giftLabelAr,
+        nameEn: giftLabelEn,
+        basePrice: 0,
+        pricePerUnit: 0,
+        quantity: 1,
+        selectedSize: 'Standard',
+        selectedSizeAr: 'عادي',
+        isSpicy: false,
+        notes: isRtl ? 'هدية مجانية من عجلة الحظ التفاعلية' : 'Free reward from the active lucky wheel'
+      });
+    }
+
     // List of Egyptian captain names
     const captainsList = ['أبو حميد الطيار', 'أبو كرم الجريء', 'عمر الدليفري', 'سيد الدراج المجهول'];
     const captainName = captainsList[Math.floor(Math.random() * captainsList.length)];
@@ -946,7 +979,7 @@ export default function App() {
       phone: orderDetails.phone,
       deliveryAddress: orderDetails.deliveryAddress,
       paymentMethod: orderDetails.paymentMethod,
-      items: orderDetails.items,
+      items: finalItems,
       discountAmount: discountVal,
       deliveryFee,
       totalPrice: Math.round(finalPrice),
@@ -955,7 +988,8 @@ export default function App() {
       estimatedMinutes: Math.floor(Math.random() * 10 + 35), // 35 - 45 mins
       captainName,
       userId: currentUser?.uid || 'guest',
-      scheduledDeliveryTime: orderDetails.scheduledDeliveryTime || null
+      scheduledDeliveryTime: orderDetails.scheduledDeliveryTime || null,
+      couponCode: chosenCouponCode || null
     };
 
     // Write directly to our relational-structured persistent Firestore database
@@ -1068,6 +1102,43 @@ export default function App() {
         onAddAdmin={handleAddAdmin}
         onDeleteAdmin={handleDeleteAdmin}
       />
+    );
+  }
+
+  if (activeOrder) {
+    return (
+      <div className="min-h-screen flex flex-col justify-between font-sans bg-zinc-50 text-[#18181b]" id="order-tracking-viewport">
+        {/* 1. Sticky Navigation Header */}
+        <Header
+          cartCount={cartTotalQty}
+          onOpenCart={() => setIsCartOpen(true)}
+          onOpenWheel={() => setIsWheelOpen(true)}
+          lang={lang}
+          setLang={setLang}
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          siteSettings={siteSettings}
+          onOpenProfile={() => setIsProfileOpen(true)}
+          isRealAdmin={isRealAdmin}
+          onOpenAdmin={() => setIsAdminOpen(true)}
+        />
+
+        {/* 2. Main Live Tracking Section (Flat integrated layout, NOT a popup modal!) */}
+        <main className="flex-1 max-w-6xl w-full mx-auto px-4 py-8 md:py-12 flex flex-col justify-center">
+          <OrderTracker
+            order={activeOrder}
+            onCloseOrder={() => setActiveOrder(null)}
+            lang={lang}
+          />
+        </main>
+
+        {/* 3. Simple Footer for Order Screen */}
+        <footer className="bg-zinc-950 border-t border-zinc-800 py-8 text-[#f3f4f6]" dir={isRtl ? 'rtl' : 'ltr'}>
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center text-xs text-zinc-500">
+            <p>© {new Date().getFullYear()} {isRtl ? 'مطعم هامر - كريبات وفراخ كريسبي. جميع الحقوق محفوظة.' : 'Hummer Restaurant & Crepes. All rights reserved.'}</p>
+          </div>
+        </footer>
+      </div>
     );
   }
 

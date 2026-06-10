@@ -82,6 +82,7 @@ export interface OrderState {
   riderId?: string;
   riderName?: string;
   riderPhone?: string;
+  couponCode?: string;
 }
 
 export interface Branch {

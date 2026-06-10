@@ -1562,8 +1562,10 @@ export default function AdminDashboard({
                                       `*تليفون العميل:* ${order.phone}\n` +
                                       `*العنوان بالتفصيل:* ${order.deliveryAddress}\n` +
                                       `*طريقة الدفع:* ${order.paymentMethod === 'cash' ? 'كاش مع المندوب 💵' : 'فيزا مع المندوب 💳'}\n` +
-                                      `*إجمالي الفاتورة المطلوب تحصيلها:* ${order.totalPrice} ج.م\n\n` +
-                                      `*تفاصيل علبة الأوردر:*\n` +
+                                      `*إجمالي الفاتورة المطلوب تحصيلها:* ${order.totalPrice} ج.م\n` +
+                                      (order.couponCode ? `*الكوبون المستخدم:* ${order.couponCode}\n` : '') +
+                                      (order.discountAmount > 0 ? `*قيمة الخصم:* -${order.discountAmount} ج.م\n` : '') +
+                                      `\n*تفاصيل علبة الأوردر:*\n` +
                                       order.items.map((item, idx) => {
                                         let itemText = `• ${item.nameAr || item.nameEn} (عدد: ${item.quantity})`;
                                         if (item.selectedSizeAr) {
@@ -1594,6 +1596,18 @@ export default function AdminDashboard({
 
                           {/* Order actions footer */}
                           <div className="p-4 bg-zinc-950 border-t border-zinc-800 space-y-3">
+                            {order.couponCode && (
+                              <div className="flex justify-between text-[11px] font-black text-cyan-400">
+                                <span className="font-mono bg-cyan-950/50 px-1.5 py-0.5 rounded text-cyan-300 font-bold">{order.couponCode}</span>
+                                <span>{isRtl ? 'الكوبون المستخدم:' : 'Coupon applied:'}</span>
+                              </div>
+                            )}
+                            {order.discountAmount > 0 && (
+                              <div className="flex justify-between text-[11px] font-black text-red-400">
+                                <span className="font-mono">-{order.discountAmount} ج.م</span>
+                                <span>{isRtl ? 'قيمة الخصم:' : 'Discount value:'}</span>
+                              </div>
+                            )}
                             <div className="flex justify-between text-xs font-black">
                               <span className="text-green-400 font-mono text-sm">{order.totalPrice} ج.م</span>
                               <span className="text-zinc-550 text-zinc-500">{isRtl ? 'إجمالي الحساب المطلوب:' : 'PAYABLE PAYMENT TOTAL:'}</span>
