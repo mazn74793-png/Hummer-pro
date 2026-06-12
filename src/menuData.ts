@@ -2,12 +2,14 @@ import { MenuItem } from './types';
 import heroImage from './assets/images/hummer_hero_banner_1780836656832.png';
 import friedChickenImage from './assets/images/menu_fried_chicken_1780836678062.png';
 import crepeImage from './assets/images/menu_crepe_1780836694487.png';
+import pizzaImage from './assets/images/menu_pizza_1781266068227.jpg';
 
 // Let's use the actual generated paths via bundler imports
 export const IMAGES = {
   hero: heroImage,
   friedChicken: friedChickenImage,
-  crepe: crepeImage
+  crepe: crepeImage,
+  pizza: pizzaImage
 };
 
 export const MENU_ITEMS: MenuItem[] = [
@@ -227,6 +229,48 @@ export const MENU_ITEMS: MenuItem[] = [
     price: 12,
     image: IMAGES.hero,
     category: 'drinks'
+  },
+  // --- PIZZAS CATEGORY ---
+  {
+    id: 'pz-1',
+    nameAr: 'بيتزا سوبر هامر الإيطالية',
+    nameEn: 'Super Hummer Italian Pizza',
+    descriptionAr: 'تحفة البيتزا بصوص البومودورو الإيطالي، مغطاة بستريبس الدجاج المقرمش، سلامي بقري، قطع بصل وفلفل، وشلال جبنة موزاريلا سايحة.',
+    descriptionEn: 'The absolute masterpiece with Italian pomodoro sauce, crispy chicken strips, beef salami, bell peppers, onions, and an avalanche of melted mozzarella.',
+    price: 140,
+    image: IMAGES.pizza,
+    category: 'pizza',
+    tags: ['الأكثر مبيعاً', 'بيتزا هامر عائلية'],
+    sizes: [
+      { id: 'sz-pz1', nameAr: 'وسط (٢٨ سم)', nameEn: 'Medium (28cm)', extraPrice: 0 },
+      { id: 'sz-pz2', nameAr: 'عائلية كبيرة (٣٢ سم)', nameEn: 'Jumbo Large (32cm)', extraPrice: 40 }
+    ]
+  },
+  {
+    id: 'pz-2',
+    nameAr: 'بيتزا ميكس رانش الدجاج',
+    nameEn: 'Chicken Ranch Pizza',
+    descriptionAr: 'مزيج فاخر من الدجاج الكريسبي وشرائح الرومي المدخن والفطر، مغطاة بصوص الرانش الغني والجبنة الموزاريلا الوفيرة.',
+    descriptionEn: 'A luxury mix of crispy chicken chunks, smoked turkey slices, and mushrooms, topped with ultimate creamy ranch sauce, and rich mozzarella.',
+    price: 150,
+    image: IMAGES.pizza,
+    category: 'pizza',
+    tags: ['دبل تشيز'],
+    sizes: [
+      { id: 'sz-pz3', nameAr: 'وسط (٢٨ سم)', nameEn: 'Medium (28cm)', extraPrice: 0 },
+      { id: 'sz-pz4', nameAr: 'عائلية كبيرة (٣٢ سم)', nameEn: 'Jumbo Large (32cm)', extraPrice: 45 }
+    ]
+  },
+  {
+    id: 'pz-3',
+    nameAr: 'بيتزا ملوك الجبن الفاخرة',
+    nameEn: 'Mellok Cheese Ultimate Pizza',
+    descriptionAr: 'لعشاق الغرق في الجبن! مزيج غني وموزون من الجبنة الموزاريلا، الشيدر السايحة، الجبنة الرومي المصريه الأصيلة، ولمسة ريكفورد فرنسي.',
+    descriptionEn: 'For cheese fanatics! A perfectly balanced blend of premium mozzarella, cheddar, classic Egyptian Roumy, and bold French blue Roquefort crumbs.',
+    price: 130,
+    image: IMAGES.pizza,
+    category: 'pizza',
+    tags: ['مناسب للنباتيين']
   }
 ];
 
@@ -305,35 +349,13 @@ export const SAMPLE_REVIEWS = [
 export const HUMMER_BRANCHES = [
   {
     id: 'b-1',
-    nameAr: 'فرع مدينة نصر (الرئيسي)',
-    nameEn: 'Nasr City Branch (Main)',
-    addressAr: 'شارع عباس العقاد، بجوار كافيه سوبر إستار، القاهرة',
-    addressEn: 'Abbas El-Akkad St, Adjacent to Super Star Cafe, Cairo',
+    nameAr: 'فرع قباء (الرئيسي)',
+    nameEn: 'Quba Branch (Main)',
+    addressAr: '55 شارع ابراهيم الخليل، مدينة قباء، جسر السويس، قباء',
+    addressEn: '55 Ibrahim Al-Khalil St, Quba City, Gesr Al-Suez, Quba',
     phone: '01023456789',
     deliveryHotline: '19033',
     hoursAr: '١١:٠٠ صباحاً - ٤:٠٠ فجراً',
     hoursEn: '11:00 AM - 04:00 AM'
-  },
-  {
-    id: 'b-2',
-    nameAr: 'فرع المهندسين',
-    nameEn: 'Mohandessin Branch',
-    addressAr: 'شارع جامعة الدول العربية، أمام بوابة نادي الزمالك، الجيزة',
-    addressEn: 'Gamaet El-Dowel El-Arabiya St, Front of Zamalek Club, Giza',
-    phone: '01123456789',
-    deliveryHotline: '19033',
-    hoursAr: '١١:٠٠ صباحاً - ٤:٠٠ فجراً',
-    hoursEn: '11:00 AM - 04:00 AM'
-  },
-  {
-    id: 'b-3',
-    nameAr: 'فرع التجمع الخامس',
-    nameEn: 'Fifth Settlement Branch',
-    addressAr: 'شارع التسعين الشمالي، داخل ريجنت مول، القاهرة الجديدة',
-    addressEn: 'North 90th St, Inside Regent Mall, New Cairo',
-    phone: '01223456789',
-    deliveryHotline: '19033',
-    hoursAr: '١٢:٠٠ ظهراً - ٣:٠٠ فجراً',
-    hoursEn: '12:00 PM - 03:00 AM'
   }
 ];

@@ -26,24 +26,24 @@ export default function BranchesSection({ lang, branches, siteSettings }: Branch
         <div className="text-center max-w-2xl mx-auto mb-12">
           <div className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-red-50 border border-red-200 text-red-600 text-xs font-black mb-4">
             <MapPin className="w-4 h-4 text-red-600 animate-pulse" />
-            <span className="text-red-700 tracking-wide uppercase">{isRtl ? 'فروع هامر - نصلك أينما كنت!' : 'Hummer Branches - Delivered Everywhere!'}</span>
+            <span className="text-red-700 tracking-wide uppercase">{isRtl ? 'فرع هامر - نصلك أينما كنت!' : 'Hummer Branch - Delivered Everywhere!'}</span>
           </div>
           <h2 className="text-3xl sm:text-4xl font-black text-zinc-950 font-sans tracking-tight">
-            {isRtl ? 'عناوين فروع هامر ومناطق الدليفري 📍' : 'Our Physical Branches & Delivery Grid'}
+            {isRtl ? 'عنوان فرع هامر ومناطق الدليفري' : 'Our Branch & Delivery Grid'}
           </h2>
           <p className="text-zinc-500 text-xs sm:text-sm mt-2 leading-relaxed">
             {isRtl 
-              ? 'نهبط بـ ٣ فروع رئيسية تغطي القاهرة والجيزة بسرعة هائلة للتوصيل، صالات هامر مكيفة ودايماً منورة بلمتكم وعشاق الكريسبي!'
-              : 'Our 3 premium flagship locations cover Cairo and Giza with quick delivery. Fully chilled, comfortable dine-in parlors are always open!'}
+              ? 'فرعنا الرئيسي يغطي مناطق الدليفري بسرعة هائلة للتوصيل، صالة هامر مكيفة ودايماً منورة بلمتكم وعشاق الكريسبي!'
+              : 'Our flagship location covers delivery areas with rapid speed. Fully chilled, comfortable dine-in parlor is always open!'}
           </p>
         </div>
 
         {/* Branches Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="flex justify-center max-w-md mx-auto">
           {(branches || []).map((branch) => (
             <div
               key={branch.id}
-              className="p-6 bg-white border border-zinc-200 hover:border-zinc-900 rounded-[2.5rem] transition-all duration-300 relative group flex flex-col justify-between space-y-6 shadow-xs text-right"
+              className="p-6 bg-white border border-zinc-200 hover:border-zinc-900 rounded-[2.5rem] transition-all duration-300 relative group flex flex-col justify-between space-y-6 shadow-xs text-right w-full"
             >
               {/* Card top flare decoration */}
               <div className="absolute top-0 right-10 w-20 h-0.5 bg-gradient-to-l from-red-600 to-transparent opacity-0 group-hover:opacity-100 transition duration-300" />
@@ -51,7 +51,7 @@ export default function BranchesSection({ lang, branches, siteSettings }: Branch
               <div className="space-y-4">
                 {/* Visual Location Icon badge */}
                 <div className="w-10 h-10 bg-red-50 border border-red-200 rounded-xl flex items-center justify-center text-red-600">
-                  <MapPin className="w-5 h-5" />
+                  <MapPin className="w-5 h-5 animate-bounce-slow" />
                 </div>
 
                 {/* Branch name */}

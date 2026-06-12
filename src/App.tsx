@@ -23,7 +23,7 @@ import { saveLargeAsset, getLargeAsset, deleteLargeAsset } from './utils/indexed
 // Firebase Integrators
 import { auth, db, googleProvider, cleanFirestoreData } from './firebase';
 import { onAuthStateChanged, User as FirebaseUser, signInWithPopup } from 'firebase/auth';
-import { collection, onSnapshot, doc, getDoc, setDoc, addDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, onSnapshot, doc, getDoc, getDocs, setDoc, addDoc, deleteDoc, updateDoc, query, where } from 'firebase/firestore';
 import UserProfileModal from './components/UserProfileModal';
 
 // Types
@@ -439,7 +439,11 @@ export default function App() {
         }
       },
       (err) => {
-        console.error("Error syncing global settings:", err);
+        if (err && (err.message.includes('offline') || err.message.includes('unavailable'))) {
+          console.warn("Global settings listener operating offline.");
+        } else {
+          console.error("Error syncing global settings:", err);
+        }
       }
     );
     unsubscribers.push(unsubGlobalSettings);
@@ -456,7 +460,11 @@ export default function App() {
         }
       },
       (err) => {
-        console.error("Error syncing global menu items:", err);
+        if (err && (err.message.includes('offline') || err.message.includes('unavailable'))) {
+          console.warn("Global menu listener operating offline.");
+        } else {
+          console.error("Error syncing global menu items:", err);
+        }
       }
     );
     unsubscribers.push(unsubGlobalMenu);
@@ -473,7 +481,11 @@ export default function App() {
         }
       },
       (err) => {
-        console.error("Error syncing global branches:", err);
+        if (err && (err.message.includes('offline') || err.message.includes('unavailable'))) {
+          console.warn("Global branches listener operating offline.");
+        } else {
+          console.error("Error syncing global branches:", err);
+        }
       }
     );
     unsubscribers.push(unsubGlobalBranches);
@@ -921,6 +933,35 @@ export default function App() {
     const subtotal = orderDetails.items.reduce((sum, item) => sum + item.pricePerUnit * item.quantity, 0);
 
     const finalCouponCode = orderDetails.couponCode || chosenCouponCode || '';
+    
+    // Check if coupon is already used by this user/phone
+    if (finalCouponCode.trim()) {
+      try {
+        const uppercaseCoupon = finalCouponCode.trim().toUpperCase();
+        const qUsed = query(collection(db, 'orders'), where('couponCode', '==', uppercaseCoupon));
+        const snapshotUsed = await getDocs(qUsed);
+        const alreadyUsed = snapshotUsed.docs.some(doc => {
+          const dData = doc.data();
+          const matchesUser = currentUser && dData.userId === currentUser.uid && dData.userId !== 'guest';
+          const matchesPhone = dData.phone && dData.phone.trim() === orderDetails.phone.trim();
+          return matchesUser || matchesPhone;
+        });
+
+        if (alreadyUsed) {
+          throw new Error(
+            isRtl
+              ? `عذراً! لقد تم استخدام هذا الكوبون (${uppercaseCoupon}) مسبقاً لهذا الرقم أو الحساب. يُسمح باستخدام الكوبون مرة واحدة فقط لكل عميل.`
+              : `Sorry! This coupon (${uppercaseCoupon}) was already used by this phone number or account. Allowed once per customer.`
+          );
+        }
+      } catch (err: any) {
+        if (err.message && (err.message.includes('كوبون') || err.message.includes('coupon') || err.message.includes('used'))) {
+          throw err;
+        }
+        console.error("Error checking coupon usage lifetime:", err);
+      }
+    }
+
     const dynamicCoupons = siteSettings?.coupons || [];
     const matchedDynamic = dynamicCoupons.find(c => c.code.trim().toUpperCase() === finalCouponCode.trim().toUpperCase());
 
@@ -1218,6 +1259,7 @@ export default function App() {
               {[
                 { id: 'all', ar: 'الكل دايماً الكسبان', en: 'Show All Meals' },
                 { id: 'crepes', ar: 'الـ كريبات', en: 'Premium Crepes' },
+                { id: 'pizza', ar: 'بيتزا هامر البطل', en: 'Hummer Pizza' },
                 { id: 'fried-chicken', ar: 'الفراخ المقلية', en: 'Fried Chicken' },
                 { id: 'combos', ar: 'العروض الموفرة', en: 'Combos & Saving Deals' },
                 { id: 'sides', ar: 'المقبلات والنقنقة', en: 'Appetizers & Fries' },

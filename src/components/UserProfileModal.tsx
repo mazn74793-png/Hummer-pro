@@ -132,7 +132,11 @@ export default function UserProfileModal({
         loaded = true;
       }
     } catch (err) {
-      console.error('Error loading user profile:', err);
+      if (err instanceof Error && (err.message.includes('offline') || err.message.includes('Could not reach Cloud Firestore') || err.message.includes('unavailable'))) {
+        console.warn('User profile loading offline (using cached fallback):', err.message);
+      } else {
+        console.error('Error loading user profile:', err);
+      }
     }
 
     if (!loaded) {

@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, SiteSettings } from '../types';
 import { auth, db, cleanFirestoreData } from '../firebase';
 import { signInAnonymously, onAuthStateChanged, User as FirebaseUser } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, query, collection, where, getDocs } from 'firebase/firestore';
 import { UserProfileData } from './UserProfileModal';
 
 interface CartModalProps {
@@ -140,7 +140,11 @@ export default function CartModal({
         loaded = true;
       }
     } catch (e) {
-      console.error('Error loading profile in Cart from Firestore:', e);
+      if (e instanceof Error && (e.message.includes('offline') || e.message.includes('Could not reach Cloud Firestore') || e.message.includes('unavailable'))) {
+        console.warn('Cart profile loading offline (using cached fallback):', e.message);
+      } else {
+        console.error('Error loading profile in Cart from Firestore:', e);
+      }
     }
 
     if (!loaded) {
@@ -259,9 +263,38 @@ export default function CartModal({
   const deliveryFee = subtotal > 0 ? 25 : 0; // 25 EGP flat rate delivery in Egypt
   const finalTotal = Math.max(0, subtotal - discountAmount + deliveryFee);
 
-  const applyCoupon = (codeToApply: string) => {
+  const applyCoupon = async (codeToApply: string) => {
     const code = codeToApply.trim().toUpperCase();
     if (!code) return;
+
+    // Check lifetime limit: once per customer (matching userId or matching phone)
+    const checkUser = auth.currentUser;
+    const checkPhone = phone.trim();
+
+    if (checkUser || (checkPhone && checkPhone.length >= 11)) {
+      try {
+        const qUsed = query(collection(db, 'orders'), where('couponCode', '==', code));
+        const snapshotUsed = await getDocs(qUsed);
+        const alreadyUsed = snapshotUsed.docs.some(doc => {
+          const dData = doc.data();
+          const matchesUser = checkUser && dData.userId === checkUser.uid && dData.userId !== 'guest';
+          const matchesPhone = checkPhone && dData.phone && dData.phone.trim() === checkPhone;
+          return matchesUser || matchesPhone;
+        });
+
+        if (alreadyUsed) {
+          setCouponError(isRtl
+            ? `عذراً! لقد تم استخدام هذا الكوبون (${code}) مسبقاً لهذا الرقم أو الحساب. يُسمح باستخدام الكوبون مرة واحدة فقط لكل عميل.`
+            : `Sorry! This coupon (${code}) was already used by this phone number or account. Allowed once per customer.`
+          );
+          setCouponApplied(false);
+          setDiscountPercent(0);
+          return;
+        }
+      } catch (err) {
+        console.error("Failed to verify database coupon usage:", err);
+      }
+    }
 
     // Check custom dynamic coupons list first
     const dynamicCoupons = siteSettings?.coupons || [];
@@ -358,6 +391,37 @@ export default function CartModal({
     }
 
     setErrors({});
+
+    // Recheck coupon code uniqueness right before we place the order
+    if (couponApplied && couponCode) {
+      setIsSubmittingOrder(true);
+      try {
+        const uppercaseCoupon = couponCode.trim().toUpperCase();
+        const qUsed = query(collection(db, 'orders'), where('couponCode', '==', uppercaseCoupon));
+        const snapshotUsed = await getDocs(qUsed);
+        const alreadyUsed = snapshotUsed.docs.some(doc => {
+          const dData = doc.data();
+          const matchesUser = currentUser && dData.userId === currentUser.uid && dData.userId !== 'guest';
+          const matchesPhone = dData.phone && dData.phone.trim() === pTrim;
+          return matchesUser || matchesPhone;
+        });
+
+        if (alreadyUsed) {
+          setCouponError(isRtl
+            ? `عذراً! لقد تم استخدام هذا الكوبون (${uppercaseCoupon}) مسبقاً لهذا الرقم أو الحساب.`
+            : `Sorry! This coupon (${uppercaseCoupon}) was already used by this phone number or account.`
+          );
+          setCouponApplied(false);
+          setDiscountPercent(0);
+          setIsSubmittingOrder(false);
+          return;
+        }
+      } catch (err) {
+        console.error("Error re-verifying coupon in checkout submission:", err);
+      } finally {
+        setIsSubmittingOrder(false);
+      }
+    }
 
     // Auto-save the checkout address to their Firestore profile if it is a new address!
     if (currentUser) {

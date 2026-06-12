@@ -321,6 +321,46 @@ export default function AdminDashboard({
   // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins' | 'coupons-wheel'
   const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins' | 'coupons-wheel'>('orders');
 
+  // Date filter controls (default to filtering by current day's business transactions)
+  const [selectedDateFilter, setSelectedDateFilter] = useState<'today' | 'all' | 'custom'>('today');
+  const [customSelectedDate, setCustomSelectedDate] = useState<string>(() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  });
+
+  const getOrderDateString = (createdAtStr?: string) => {
+    if (!createdAtStr) return '';
+    try {
+      return createdAtStr.substring(0, 10);
+    } catch {
+      return '';
+    }
+  };
+
+  const todayStr = (() => {
+    const today = new Date();
+    const y = today.getFullYear();
+    const m = String(today.getMonth() + 1).padStart(2, '0');
+    const d = String(today.getDate()).padStart(2, '0');
+    return `${y}-${m}-${d}`;
+  })();
+
+  const activeInvoices = orders.filter(order => {
+    const orderDate = getOrderDateString(order.createdAt);
+    if (selectedDateFilter === 'today') {
+      return orderDate === todayStr;
+    } else if (selectedDateFilter === 'custom') {
+      return orderDate === customSelectedDate;
+    }
+    return true; // 'all'
+  });
+
+  const uniqueOrderedDays = Array.from(new Set(orders.map(o => getOrderDateString(o.createdAt)).filter(Boolean))).sort().reverse();
+  const totalFilteredSales = activeInvoices.reduce((sum, o) => sum + (Number(o.totalPrice) || 0), 0);
+
   
   // Fullscreen state
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -1349,24 +1389,176 @@ export default function AdminDashboard({
           {/* 1. SCREEN: LIVE ORDERS radar */}
           {activeSubTab === 'orders' && (
             <div className="space-y-6">
+              {/* Header & Day Clean Button Layout */}
               <div className="flex flex-wrap items-center justify-between gap-4">
-                {orders.length > 0 && (
-                  <button
-                    onClick={() => {
-                      if (confirm(isRtl ? 'هل تريد مسح وأرشفة جميع الطلبات المسجلة بالأدمن حالياً؟' : 'Clear all archived orders?')) {
-                        onClearAllOrders();
-                        toastNotification(isRtl ? 'تم تصفير لوحة الطلبات!' : 'Orders cleared!');
-                      }
-                    }}
-                    className="py-1.5 px-3.5 bg-zinc-800 hover:bg-zinc-700 rounded-xl text-xs font-bold text-red-400 hover:text-red-500 cursor-pointer border border-zinc-700 transition"
-                  >
-                    {isRtl ? 'تصفير وأرشفة كافة الطلبات 🧹' : 'Clear All Orders 🧹'}
-                  </button>
-                )}
+                <div className="flex flex-wrap gap-2">
+                  {orders.length > 0 && (
+                    <button
+                      onClick={() => {
+                        if (confirm(isRtl ? 'هل تريد مسح وأرشفة جميع الطلبات المسجلة بالأدمن حالياً؟' : 'Clear all archived orders?')) {
+                          onClearAllOrders();
+                          toastNotification(isRtl ? 'تم تصفير لوحة الطلبات!' : 'Orders cleared!');
+                        }
+                      }}
+                      className="py-1.5 px-3.5 bg-zinc-800 hover:bg-zinc-750 text-red-400 hover:text-red-500 rounded-xl text-xs font-black cursor-pointer border border-zinc-700 transition"
+                    >
+                      {isRtl ? 'تصفير وأرشفة كافة الطلبات 🧹' : 'Clear All Orders 🧹'}
+                    </button>
+                  )}
+
+                  {activeInvoices.length > 0 && (
+                    <button
+                      onClick={async () => {
+                        if (confirm(isRtl 
+                          ? `تحذير: هل أنت متأكد من مسح وتصفية عدد (${activeInvoices.length}) فاتورة لليوم المختار فقط بشكل نهائي؟` 
+                          : `Warning: Clean (${activeInvoices.length}) invoices for this day only?`)) {
+                          for (const o of activeInvoices) {
+                            await onDeleteOrder(o.id);
+                          }
+                          toastNotification(isRtl ? 'تم تنظيف فواتير اليوم المختار بنجاح!' : 'Invoices deleted!');
+                        }
+                      }}
+                      className="py-1.5 px-3.5 bg-red-950/40 hover:bg-red-900/60 border border-red-900/60 text-red-300 hover:text-red-400 rounded-xl text-xs font-black cursor-pointer transition"
+                    >
+                      {isRtl ? 'حذف فواتير الفلتر الحالي فقط 🧼' : 'Wipe Only Filtered Invoices'}
+                    </button>
+                  )}
+                </div>
 
                 <div className="text-right">
                   <h3 className="text-xl font-black text-white font-sans">{isRtl ? 'طابور تجهيز الطلبات بالمطبخ 🍕' : 'Kitchen active tickets queue'}</h3>
-                  <p className="text-xs text-zinc-500 mt-1">{isRtl ? `لديك عدد (${orders.length}) طلبات في الانتظار أو الطبخ.` : `Currently hosting (${orders.length}) total recorded active request(s)`}</p>
+                  <p className="text-xs text-zinc-500 mt-1">
+                    {isRtl 
+                      ? `لديك إجمالي (${orders.length}) طلبات مسجلة في قاعدة البيانات.` 
+                      : `Currently hosting (${orders.length}) total recorded active request(s)`}
+                  </p>
+                </div>
+              </div>
+
+              {/* Day Selector and Sales Organizer Widget */}
+              <div className="bg-zinc-950 p-5 rounded-[2rem] border border-zinc-850 space-y-4">
+                <div className="flex flex-wrap items-center justify-between gap-3 border-b border-zinc-900 pb-3" dir="rtl">
+                  <div className="text-right">
+                    <h4 className="text-sm font-black text-white flex items-center gap-1.5 justify-end">
+                      <Calendar className="w-4 h-4 text-red-500" />
+                      <span>منظم فواتير وجدول المبيعات اليومية</span>
+                    </h4>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">
+                      {isRtl 
+                        ? 'تصفح فواتير اليوم، أو اختر يوماً سابقاً لمراجعته وحذف قديمه لضمان سرعة السيستم والاستقرار' 
+                        : 'Browse today’s bills, review older sales, or wipe records to keep cache lightweight.'}
+                    </p>
+                  </div>
+
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setSelectedDateFilter('today')}
+                      className={`py-1.5 px-3.5 rounded-xl text-xs font-black transition ${
+                        selectedDateFilter === 'today'
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                      }`}
+                    >
+                      {isRtl ? 'أوردرات اليوم فقط 📅' : 'Today Only'}
+                    </button>
+                    <button
+                      onClick={() => setSelectedDateFilter('all')}
+                      className={`py-1.5 px-3.5 rounded-xl text-xs font-black transition ${
+                        selectedDateFilter === 'all'
+                          ? 'bg-red-600 text-white shadow-xs'
+                          : 'bg-zinc-900 text-zinc-400 hover:text-white hover:bg-zinc-800'
+                      }`}
+                    >
+                      {isRtl ? 'عرض كل الأيام 🗄️' : 'All Days'}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-12 gap-4 items-center" dir="rtl">
+                  {/* Unique days list to click instantly */}
+                  <div className="md:col-span-8 space-y-2 text-right">
+                    <span className="text-[10px] uppercase font-black tracking-wider text-zinc-500 block">
+                      {isRtl ? 'أيام مبيعات سابقة مسجلة بالسيستم (اختر لتصفيتهم):' : 'Pre-recorded sales days (Click to inspect):'}
+                    </span>
+                    {uniqueOrderedDays.length === 0 ? (
+                      <p className="text-xs text-zinc-600 font-semibold italic">{isRtl ? 'لا توجد أيام سابقة مسجلة بالأرشيف' : 'No prior sales dates recorded'}</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {uniqueOrderedDays.map((dayStr) => {
+                          const isSelected = selectedDateFilter === 'custom' && customSelectedDate === dayStr;
+                          const isToday = dayStr === todayStr;
+                          // count orders for this day
+                          const dayCount = orders.filter(o => getOrderDateString(o.createdAt) === dayStr).length;
+
+                          return (
+                            <button
+                              key={dayStr}
+                              onClick={() => {
+                                setCustomSelectedDate(dayStr);
+                                setSelectedDateFilter('custom');
+                              }}
+                              className={`py-1 px-2.5 rounded-lg text-xs font-mono font-bold flex items-center gap-1.5 border transition cursor-pointer ${
+                                isSelected
+                                  ? 'bg-amber-500/20 text-amber-400 border-amber-600/50'
+                                  : 'bg-zinc-900 text-zinc-400 border-zinc-850 hover:bg-zinc-800 hover:text-zinc-205'
+                              }`}
+                            >
+                              <span className={isToday ? "text-red-500" : "text-zinc-500"}>■</span>
+                              <span>{dayStr}</span>
+                              <span className="bg-zinc-950/80 text-[10px] px-1 rounded text-zinc-300 font-sans font-black">
+                                ({dayCount})
+                              </span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Custom Calendar date picker input */}
+                  <div className="md:col-span-4 bg-zinc-900 border border-zinc-850 p-2.5 rounded-2xl flex flex-col items-stretch space-y-1">
+                    <label className="text-[10px] font-black text-zinc-400 text-right block">
+                      {isRtl ? '📅 تاريخ مخصص مستهدف بالتقويم:' : '📅 Pick custom manual date:'}
+                    </label>
+                    <input
+                      type="date"
+                      value={customSelectedDate}
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          setCustomSelectedDate(e.target.value);
+                          setSelectedDateFilter('custom');
+                        }
+                      }}
+                      className="w-full bg-zinc-950 text-white text-xs font-bold border border-zinc-800 rounded-lg p-1.5 mt-1 outline-none focus:border-red-600 text-right"
+                    />
+                  </div>
+                </div>
+
+                {/* Filter Status summary card */}
+                <div className="bg-zinc-900/50 rounded-2xl border border-zinc-850 p-3 flex flex-wrap items-center justify-between gap-3 text-right" dir="rtl">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse inline-block" />
+                    <p className="text-xs text-zinc-400 font-bold">
+                      {isRtl ? 'وضع تصفية الفواتير النشط حالياً:' : 'Active filter option:'}{' '}
+                      <span className="text-white font-black underline">
+                        {selectedDateFilter === 'today' && (isRtl ? `اليوم (${todayStr})` : `Today (${todayStr})`)}
+                        {selectedDateFilter === 'all' && (isRtl ? 'كل فترات المبيعات مدى الحياة' : 'All lifetime sales')}
+                        {selectedDateFilter === 'custom' && (isRtl ? `يوم مخصص (${customSelectedDate})` : `Custom selected date (${customSelectedDate})`)}
+                      </span>
+                    </p>
+                  </div>
+
+                  <div className="flex gap-4 items-center">
+                    <div className="text-right">
+                      <span className="text-[10px] text-zinc-500 font-black block leading-none uppercase">{isRtl ? 'عدد طلبات الفلتر' : 'Filter orders count'}</span>
+                      <span className="text-sm font-black text-white font-mono">{activeInvoices.length}</span>
+                    </div>
+                    <div className="h-6 w-[1px] bg-zinc-800" />
+                    <div className="text-right">
+                      <span className="text-[10px] text-zinc-500 font-black block leading-none uppercase">{isRtl ? 'مبيعات هذا الفلتر' : 'Total sales on filter'}</span>
+                      <span className="text-sm font-black text-emerald-400 font-mono">{totalFilteredSales} ج.م</span>
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -1384,10 +1576,24 @@ export default function AdminDashboard({
                     </p>
                   </div>
                 </div>
+              ) : activeInvoices.length === 0 ? (
+                <div className="text-center p-16 border border-zinc-850 bg-zinc-900/20 rounded-[2.5rem] space-y-4 max-w-lg mx-auto">
+                  <div className="w-14 h-14 bg-zinc-900 rounded-full flex items-center justify-center mx-auto text-zinc-550 border border-zinc-800">
+                    <Calendar className="w-6 h-6 text-amber-500" />
+                  </div>
+                  <div>
+                    <p className="text-white font-black text-sm">{isRtl ? 'لا توجد فواتير أو أوردرات لهذا اليوم! 📅' : 'No records for this selected date'}</p>
+                    <p className="text-xs text-zinc-500 mt-1.5 leading-relaxed font-semibold">
+                      {isRtl 
+                        ? 'لم يتم استلام أو تسجيل أي فواتير في التاريخ المختار أعلى. يمكنك اختيار تاريخ آخر أو النقر على "عرض كل الأيام" لمراجعة كامل الأرشيف المتاح.' 
+                        : 'No entries recorded for this day. Switch to other dates or select All Days to inspect cached logs.'}
+                    </p>
+                  </div>
+                </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <AnimatePresence initial={false}>
-                    {orders.map((order, idx) => {
+                    {activeInvoices.map((order, idx) => {
                       return (
                         <motion.div
                           key={order.id}

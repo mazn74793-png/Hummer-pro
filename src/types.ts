@@ -2,7 +2,7 @@
  * Shared Type Definitions for Hummer Crepes & Fried Chicken App
  */
 
-export type FoodCategory = 'fried-chicken' | 'crepes' | 'combos' | 'sides' | 'drinks';
+export type FoodCategory = 'fried-chicken' | 'crepes' | 'pizza' | 'combos' | 'sides' | 'drinks';
 
 export interface SizeOption {
   id: string;
