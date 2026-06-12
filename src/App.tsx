@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { Sparkles, Utensils, Search, Flame, MapPin, PhoneCall, Clock, HelpCircle, Gift, CheckCircle } from 'lucide-react';
+import { Sparkles, Utensils, Search, Flame, MapPin, PhoneCall, Clock, HelpCircle, Gift, CheckCircle, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
 // Components
@@ -137,6 +137,25 @@ export default function App() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [isWheelOpen, setIsWheelOpen] = useState<boolean>(false);
   const [chosenCouponCode, setChosenCouponCode] = useState<string>('');
+  
+  // Added to cart feedback toast state
+  const [addedItemToast, setAddedItemToast] = useState<{
+    show: boolean;
+    nameAr: string;
+    nameEn: string;
+    quantity: number;
+    price: number;
+    image?: string;
+  } | null>(null);
+
+  useEffect(() => {
+    if (addedItemToast) {
+      const timer = setTimeout(() => {
+        setAddedItemToast(null);
+      }, 7500);
+      return () => clearTimeout(timer);
+    }
+  }, [addedItemToast]);
   
   // User Profile & Rider database states
   const [isProfileOpen, setIsProfileOpen] = useState<boolean>(false);
@@ -863,6 +882,14 @@ export default function App() {
     }
 
     saveCart(updatedCart);
+    setAddedItemToast({
+      show: true,
+      nameAr: item.nameAr,
+      nameEn: item.nameEn,
+      quantity,
+      price: pricePerUnit * quantity,
+      image: item.image
+    });
   };
 
   // Helper hash function for distinct notes
@@ -896,6 +923,14 @@ export default function App() {
     };
 
     saveCart([...cartItems, newCartItem]);
+    setAddedItemToast({
+      show: true,
+      nameAr: customDetails.nameAr,
+      nameEn: customDetails.nameEn,
+      quantity: 1,
+      price: customDetails.totalPrice,
+      image: undefined
+    });
   };
 
   // 3. Edit quantities from cart modal
@@ -1366,6 +1401,84 @@ export default function App() {
             couponCodeFromWheel={chosenCouponCode}
             siteSettings={siteSettings}
           />
+        )}
+      </AnimatePresence>
+
+      {/* 7.5. Added to Cart Toast Notification Feedback */}
+      <AnimatePresence>
+        {addedItemToast && addedItemToast.show && (
+          <motion.div
+            initial={{ opacity: 0, y: 100, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 100, scale: 0.9 }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 md:left-auto md:right-6 md:translate-x-0 z-50 w-[92%] max-w-sm bg-zinc-950 text-white rounded-[2rem] border border-zinc-800 shadow-2xl p-4 sm:p-5 flex flex-col gap-4 font-sans"
+            dir={isRtl ? 'rtl' : 'ltr'}
+          >
+            <div className="flex gap-3 items-start">
+              {/* Item image or info icon */}
+              <div className="w-12 h-12 rounded-2xl bg-zinc-900 border border-zinc-850 overflow-hidden shrink-0 flex items-center justify-center shadow-inner">
+                {addedItemToast.image ? (
+                  <img src={addedItemToast.image} alt="Added item" className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <ShoppingCart className="w-5 h-5 text-red-500 animate-pulse" />
+                )}
+              </div>
+
+              {/* Content details explaining it has been added to cart */}
+              <div className="flex-1 text-right">
+                <div className="flex items-center gap-1.5 justify-end">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <h4 className="text-xs sm:text-sm font-black text-white">
+                    {isRtl ? 'تمت الإضافة إلى السلة بنجاح! 🛒' : 'Added to Basket!'}
+                  </h4>
+                </div>
+                <p className="text-[11px] sm:text-xs text-zinc-300 font-extrabold mt-1 leading-normal">
+                  {isRtl
+                    ? `تم وضع عدد (${addedItemToast.quantity}) من "${addedItemToast.nameAr}" في سلتك.`
+                    : `Added (${addedItemToast.quantity}) of "${addedItemToast.nameEn}" into your basket.`}
+                </p>
+                <span className="text-[10px] font-black text-emerald-400 bg-zinc-900 px-2 py-0.5 rounded-md inline-block mt-1">
+                  + {addedItemToast.price} {isRtl ? 'ج.م' : 'EGP'}
+                </span>
+                <p className="text-[10px] text-zinc-500 font-bold mt-1.5">
+                  {isRtl 
+                    ? '⚠️ هيرجعك المنيو تضيف أكتر، أو تقدر تطلب الأوردر والدفع من الزرار الأحمر.'
+                    : '⚠️ Browse more food items, or check out with the red button anytime.'}
+                </p>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="grid grid-cols-2 gap-2 mt-1">
+              <button
+                onClick={() => setAddedItemToast(null)}
+                className="py-2 px-3 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl text-[10px] sm:text-xs font-black transition-all cursor-pointer border border-zinc-850"
+              >
+                {isRtl ? 'مواصلة التصفح 😋' : 'Add More Food'}
+              </button>
+
+              <button
+                onClick={() => {
+                  setIsCartOpen(true);
+                  setAddedItemToast(null);
+                }}
+                className="py-2 px-3 bg-red-650 hover:bg-red-700 text-white rounded-xl text-[10px] sm:text-xs font-black transition-all cursor-pointer shadow-lg shadow-red-900/10 border border-red-750 flex items-center justify-center gap-1.5 animate-pulse"
+              >
+                <span>{isRtl ? 'طلب الأوردر الآن 🧾' : 'Checkout Now'}</span>
+              </button>
+            </div>
+
+            {/* Progress countdown indicator */}
+            <div className="absolute bottom-0 left-4 right-4 h-[3px] bg-zinc-900 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: '100%' }}
+                animate={{ width: '0%' }}
+                transition={{ duration: 7.5, ease: 'linear' }}
+                className="h-full bg-gradient-to-r from-red-650 to-amber-500"
+              />
+            </div>
+          </motion.div>
         )}
       </AnimatePresence>
 
