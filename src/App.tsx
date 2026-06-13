@@ -56,6 +56,9 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   disableIntro: true,
   systemApiKey: '',
   systemWebhookUrl: '',
+  socialFacebook: 'https://facebook.com',
+  socialInstagram: 'https://instagram.com',
+  socialTiktok: 'https://tiktok.com',
 };
 
 // High Fidelity Audio Synthesis for premium interactive sounds with 100% reliability (bypasses static files)
@@ -1599,11 +1602,36 @@ export default function App() {
               {isRtl ? 'انضم إلى مليون هامر من أكيلية الكريبات لمتابعة أقوى مسابقاتنا السنوية وعروض الـ 1+1 المجانية!' : 'Follow our official media channels to grab daily codes.'}
             </p>
             <div className="flex gap-2 justify-end pt-1">
-              {['Facebook', 'Instagram', 'TikTok'].map((sc) => (
-                <span key={sc} className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-black text-zinc-400 hover:text-red-600 rounded-lg cursor-pointer transition">
-                  {sc}
-                </span>
-              ))}
+              {siteSettings?.socialFacebook && (
+                <a
+                  href={siteSettings.socialFacebook}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-black text-zinc-400 hover:text-red-600 rounded-lg transition"
+                >
+                  Facebook
+                </a>
+              )}
+              {siteSettings?.socialInstagram && (
+                <a
+                  href={siteSettings.socialInstagram}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-black text-zinc-400 hover:text-orange-500 rounded-lg transition"
+                >
+                  Instagram
+                </a>
+              )}
+              {siteSettings?.socialTiktok && (
+                <a
+                  href={siteSettings.socialTiktok}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-2 py-1 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 text-[10px] font-black text-zinc-400 hover:text-white rounded-lg transition"
+                >
+                  TikTok
+                </a>
+              )}
             </div>
           </div>
 

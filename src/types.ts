@@ -123,6 +123,9 @@ export interface SiteSettings {
   systemApiKey?: string;
   systemWebhookUrl?: string;
   coupons?: DbCoupon[];
+  socialFacebook?: string;
+  socialInstagram?: string;
+  socialTiktok?: string;
 }
 
 export interface DbCoupon {

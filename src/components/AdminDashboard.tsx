@@ -3,7 +3,7 @@ import {
   X, Check, Plus, Trash2, Edit2, Upload, AlertCircle, Maximize2, Minimize2, 
   Settings, Loader2, ChefHat, Bell, Wifi, ArrowDown, ArrowUp, RefreshCw, Eye,
   MapPin, Edit, EyeOff, LayoutTemplate, Building, TrendingUp, Users, Calendar, Award,
-  Database, HardDrive, Key, Globe, Download
+  Database, HardDrive, Key, Globe, Download, Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
@@ -42,24 +42,24 @@ export default function AdminDashboard({
   onClose,
   lang,
   orders,
-  onUpdateOrderStatus,
-  onDeleteOrder,
+  onUpdateOrderStatus: propOnUpdateOrderStatus,
+  onDeleteOrder: propOnDeleteOrder,
   menuItems,
-  onUpdateMenuItems,
-  onClearAllOrders,
+  onUpdateMenuItems: propOnUpdateMenuItems,
+  onClearAllOrders: propOnClearAllOrders,
   siteSettings,
-  onUpdateSiteSettings,
+  onUpdateSiteSettings: propOnUpdateSiteSettings,
   branches,
-  onUpdateBranches,
+  onUpdateBranches: propOnUpdateBranches,
   riders = [],
-  onAddRider,
-  onDeleteRider,
-  onUpdateRiderStatus,
-  onAssignRiderToOrder,
+  onAddRider: propOnAddRider,
+  onDeleteRider: propOnDeleteRider,
+  onUpdateRiderStatus: propOnUpdateRiderStatus,
+  onAssignRiderToOrder: propOnAssignRiderToOrder,
   currentUser,
   authorizedAdmins = [],
-  onAddAdmin,
-  onDeleteAdmin
+  onAddAdmin: propOnAddAdmin,
+  onDeleteAdmin: propOnDeleteAdmin
 }: AdminDashboardProps) {
   const isRtl = lang === 'ar';
 
@@ -320,6 +320,65 @@ export default function AdminDashboard({
 
   // Tabs: 'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins' | 'coupons-wheel'
   const [activeSubTab, setActiveSubTab] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins' | 'coupons-wheel'>('orders');
+
+  // Admin PIN configuration (2200)
+  const [isAdminPinUnlocked, setIsAdminPinUnlocked] = useState(false);
+  const [pinInputValue, setPinInputValue] = useState('');
+  const [pinErrorMsg, setPinErrorMsg] = useState('');
+  const [showPinPrompt, setShowPinPrompt] = useState(false);
+  const [pendingTabChange, setPendingTabChange] = useState<'orders' | 'menu-manager' | 'site-settings' | 'cloudinary-settings' | 'riders' | 'analytics' | 'admins' | 'coupons-wheel' | null>(null);
+  const [pendingAction, setPendingAction] = useState<{ type: string; execute: () => void } | null>(null);
+
+  const checkPinAndExecute = (action: () => void, tabToSet?: any) => {
+    if (isAdminPinUnlocked) {
+      if (tabToSet) {
+        setActiveSubTab(tabToSet);
+      } else {
+        action();
+      }
+    } else {
+      setPendingTabChange(tabToSet || null);
+      setPendingAction(tabToSet ? null : { type: 'custom', execute: action });
+      setPinInputValue('');
+      setPinErrorMsg('');
+      setShowPinPrompt(true);
+    }
+  };
+
+  const handlePinSubmit = (e?: React.FormEvent) => {
+    if (e) {
+      e.preventDefault();
+    }
+    if (pinInputValue === '2200') {
+      setIsAdminPinUnlocked(true);
+      setShowPinPrompt(false);
+      setPinErrorMsg('');
+      if (pendingTabChange) {
+        setActiveSubTab(pendingTabChange);
+        setPendingTabChange(null);
+      }
+      if (pendingAction) {
+        pendingAction.execute();
+        setPendingAction(null);
+      }
+    } else {
+      setPinErrorMsg(isRtl ? 'الرمز غير صحيح! الرجاء المحاولة مرة أخرى.' : 'Incorrect PIN! Please try again.');
+    }
+  };
+
+  // Shadow callback functions securely
+  const onUpdateOrderStatus = (orderId: string, nextStatus: OrderStep) => checkPinAndExecute(() => propOnUpdateOrderStatus(orderId, nextStatus));
+  const onDeleteOrder = (orderId: string) => checkPinAndExecute(() => propOnDeleteOrder(orderId));
+  const onUpdateMenuItems = (newItems: MenuItem[]) => checkPinAndExecute(() => propOnUpdateMenuItems(newItems));
+  const onClearAllOrders = () => checkPinAndExecute(() => propOnClearAllOrders());
+  const onUpdateSiteSettings = (newSettings: SiteSettings) => checkPinAndExecute(() => propOnUpdateSiteSettings(newSettings));
+  const onUpdateBranches = (newBranches: Branch[]) => checkPinAndExecute(() => propOnUpdateBranches(newBranches));
+  const onAddRider = (name: string, phone: string) => checkPinAndExecute(() => propOnAddRider(name, phone));
+  const onDeleteRider = (riderId: string) => checkPinAndExecute(() => propOnDeleteRider(riderId));
+  const onUpdateRiderStatus = (riderId: string, status: 'here' | 'out') => checkPinAndExecute(() => propOnUpdateRiderStatus(riderId, status));
+  const onAssignRiderToOrder = (orderId: string, riderId: string) => checkPinAndExecute(() => propOnAssignRiderToOrder(orderId, riderId));
+  const onAddAdmin = (email: string) => checkPinAndExecute(() => propOnAddAdmin(email));
+  const onDeleteAdmin = propOnDeleteAdmin ? (email: string) => checkPinAndExecute(() => propOnDeleteAdmin(email)) : undefined;
 
   // Date filter controls (default to filtering by current day's business transactions)
   const [selectedDateFilter, setSelectedDateFilter] = useState<'today' | 'all' | 'custom'>('today');
@@ -1051,8 +1110,10 @@ export default function AdminDashboard({
 
             <button
               onClick={() => {
-                setActiveSubTab('menu-manager');
-                resetFoodForm();
+                checkPinAndExecute(() => {
+                  setActiveSubTab('menu-manager');
+                  resetFoodForm();
+                }, 'menu-manager');
               }}
               className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
                 activeSubTab === 'menu-manager'
@@ -1067,7 +1128,7 @@ export default function AdminDashboard({
             </button>
 
             <button
-              onClick={() => setActiveSubTab('site-settings')}
+              onClick={() => checkPinAndExecute(() => {}, 'site-settings')}
               className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
                 activeSubTab === 'site-settings'
                   ? 'bg-red-600 text-white shadow'
@@ -1079,7 +1140,7 @@ export default function AdminDashboard({
             </button>
 
             <button
-              onClick={() => setActiveSubTab('cloudinary-settings')}
+              onClick={() => checkPinAndExecute(() => {}, 'cloudinary-settings')}
               className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
                 activeSubTab === 'cloudinary-settings'
                   ? 'bg-red-600 text-white shadow'
@@ -1091,7 +1152,7 @@ export default function AdminDashboard({
             </button>
 
             <button
-              onClick={() => setActiveSubTab('riders')}
+              onClick={() => checkPinAndExecute(() => {}, 'riders')}
               className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
                 activeSubTab === 'riders'
                   ? 'bg-red-600 text-white shadow'
@@ -1105,7 +1166,7 @@ export default function AdminDashboard({
             </button>
 
             <button
-              onClick={() => setActiveSubTab('analytics')}
+              onClick={() => checkPinAndExecute(() => {}, 'analytics')}
               className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
                 activeSubTab === 'analytics'
                   ? 'bg-red-600 text-white shadow'
@@ -1117,7 +1178,7 @@ export default function AdminDashboard({
             </button>
 
             <button
-              onClick={() => setActiveSubTab('admins')}
+              onClick={() => checkPinAndExecute(() => {}, 'admins')}
               className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
                 activeSubTab === 'admins'
                   ? 'bg-red-600 text-white shadow'
@@ -1129,7 +1190,7 @@ export default function AdminDashboard({
             </button>
 
             <button
-              onClick={() => setActiveSubTab('coupons-wheel')}
+              onClick={() => checkPinAndExecute(() => {}, 'coupons-wheel')}
               className={`w-full py-3 px-4 rounded-2xl text-xs font-black text-right transition-all flex items-center justify-between cursor-pointer ${
                 activeSubTab === 'coupons-wheel'
                   ? 'bg-red-600 text-white shadow'
@@ -2504,6 +2565,50 @@ export default function AdminDashboard({
                       </div>
                     </div>
 
+                    {/* Part D.2: Social Media Pages Links */}
+                    <div className="bg-zinc-950/50 p-5 rounded-2xl border border-zinc-850 space-y-4 text-right">
+                      <h5 className="text-xs font-black text-red-500 uppercase tracking-widest flex items-center gap-1.5 justify-end">
+                        <span>{isRtl ? '٤.٢. صفحات التواصل الاجتماعي (Social Media)' : '4.2. Social Media Links'}</span>
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse"></span>
+                      </h5>
+
+                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-right">
+                        {/* Facebook */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'رابط صفحة الفيس بوك:' : 'Facebook Page Link:'}</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. https://facebook.com/hummer"
+                            value={editedSettings?.socialFacebook || ''}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, socialFacebook: e.target.value })}
+                            className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
+                          />
+                        </div>
+                        {/* Instagram */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'رابط صفحة الانستجرام:' : 'Instagram Page Link:'}</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. https://instagram.com/hummer"
+                            value={editedSettings?.socialInstagram || ''}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, socialInstagram: e.target.value })}
+                            className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
+                          />
+                        </div>
+                        {/* TikTok */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'رابط صفحة التيك توك:' : 'TikTok Page Link:'}</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. https://tiktok.com/@hummer"
+                            value={editedSettings?.socialTiktok || ''}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, socialTiktok: e.target.value })}
+                            className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 ltr text-left"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Part E: Custom brand logo url link & direct phone file uploader */}
                     <div className="bg-zinc-950/50 p-5 rounded-2xl border border-zinc-850 space-y-4 text-right">
                       <h5 className="text-xs font-black text-rose-500 uppercase tracking-widest flex items-center gap-1.5 justify-end">
@@ -3531,6 +3636,187 @@ export default function AdminDashboard({
         </div>
 
       </div>
+
+      {/* Dynamic PIN Prompt Overlay Modal */}
+      <AnimatePresence>
+        {showPinPrompt && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-zinc-950/90 backdrop-blur-md"
+            dir={isRtl ? 'rtl' : 'ltr'}
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              transition={{ type: "spring", damping: 25, stiffness: 350 }}
+              className="bg-zinc-900 border border-zinc-800 w-full max-w-sm p-6 rounded-3xl shadow-2xl space-y-6 relative text-center"
+            >
+              {/* Close Button */}
+              <button
+                onClick={() => {
+                  setShowPinPrompt(false);
+                  setPendingTabChange(null);
+                  setPendingAction(null);
+                  setPinInputValue('');
+                  setPinErrorMsg('');
+                }}
+                className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-full transition cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+
+              <div className="space-y-2 pt-2">
+                <div className="w-12 h-12 bg-red-500/10 border border-red-500/20 rounded-2xl flex items-center justify-center mx-auto text-red-500">
+                  <Lock className="w-6 h-6 animate-pulse" />
+                </div>
+                <h3 className="text-lg font-black text-white">
+                  {isRtl ? 'قسم مغلق برمز أمان' : 'Protected Admin Zone'}
+                </h3>
+                <p className="text-xs text-zinc-400 font-bold max-w-xs mx-auto">
+                  {isRtl
+                    ? 'يجب إدخال الرمز السري للمتابعة.'
+                    : 'A secure security PIN is required to continue.'}
+                </p>
+              </div>
+
+              {/* Status/Error Indicator */}
+              {pinErrorMsg && (
+                <motion.div
+                  initial={{ opacity: 0, y: -5 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="bg-red-500/10 border border-red-500/20 py-2 px-3 rounded-xl text-xs text-red-400 font-bold"
+                >
+                  {pinErrorMsg}
+                </motion.div>
+              )}
+
+              {/* PIN Display Circles */}
+              <div className="flex justify-center items-center gap-3 py-2">
+                {[0, 1, 2, 3].map((idx) => {
+                  const hasDigit = pinInputValue.length > idx;
+                  return (
+                    <motion.div
+                      key={idx}
+                      animate={{
+                        scale: hasDigit ? [1, 1.15, 1] : 1,
+                        backgroundColor: hasDigit ? '#dc2626' : 'rgba(39, 39, 42, 0.6)'
+                      }}
+                      transition={{ duration: 0.15 }}
+                      className="w-5 h-5 rounded-full border border-zinc-700 shadow-inner flex items-center justify-center"
+                    >
+                      {hasDigit && (
+                        <div className="w-2 h-2 bg-white rounded-full" />
+                      )}
+                    </motion.div>
+                  );
+                })}
+              </div>
+
+              {/* Keypad Buttons */}
+              <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto pt-2">
+                {[1, 2, 3, 4, 5, 6, 7, 8, 9].map((num) => (
+                  <button
+                    key={num}
+                    type="button"
+                    onClick={() => {
+                      if (pinInputValue.length < 4) {
+                        const nextVal = pinInputValue + num;
+                        setPinInputValue(nextVal);
+                        setPinErrorMsg('');
+                        if (nextVal.length === 4) {
+                          setTimeout(() => {
+                            if (nextVal === '2200') {
+                              setIsAdminPinUnlocked(true);
+                              setShowPinPrompt(false);
+                              if (pendingTabChange) {
+                                setActiveSubTab(pendingTabChange);
+                                setPendingTabChange(null);
+                              }
+                              if (pendingAction) {
+                                pendingAction.execute();
+                                setPendingAction(null);
+                              }
+                            } else {
+                              setPinErrorMsg(isRtl ? 'الرمز غير صحيح! الرجاء المحاولة مرة أخرى.' : 'Incorrect PIN! Please try again.');
+                              setPinInputValue('');
+                            }
+                          }, 250);
+                        }
+                      }
+                    }}
+                    className="h-12 bg-zinc-800/60 hover:bg-zinc-850 active:scale-95 text-xl font-bold text-white rounded-2xl flex items-center justify-center transition cursor-pointer"
+                  >
+                    {num}
+                  </button>
+                ))}
+
+                {/* Backspace/Clear Button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPinInputValue('');
+                    setPinErrorMsg('');
+                  }}
+                  className="h-12 bg-red-950/20 hover:bg-red-950/40 text-red-400 font-bold rounded-2xl flex items-center justify-center transition cursor-pointer text-xs"
+                >
+                  {isRtl ? 'مسح' : 'CLEAR'}
+                </button>
+
+                {/* Number 0 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    if (pinInputValue.length < 4) {
+                      const nextVal = pinInputValue + '0';
+                      setPinInputValue(nextVal);
+                      setPinErrorMsg('');
+                      if (nextVal.length === 4) {
+                        setTimeout(() => {
+                          if (nextVal === '2200') {
+                            setIsAdminPinUnlocked(true);
+                            setShowPinPrompt(false);
+                            if (pendingTabChange) {
+                              setActiveSubTab(pendingTabChange);
+                              setPendingTabChange(null);
+                            }
+                            if (pendingAction) {
+                              pendingAction.execute();
+                              setPendingAction(null);
+                            }
+                          } else {
+                            setPinErrorMsg(isRtl ? 'الرمز غير صحيح! الرجاء المحاولة مرة أخرى.' : 'Incorrect PIN! Please try again.');
+                            setPinInputValue('');
+                          }
+                        }, 250);
+                      }
+                    }
+                  }}
+                  className="h-12 bg-zinc-800/60 hover:bg-zinc-850 active:scale-95 text-xl font-bold text-white rounded-2xl flex items-center justify-center transition cursor-pointer"
+                >
+                  0
+                </button>
+
+                {/* Submit/Verify Button */}
+                <button
+                  type="button"
+                  onClick={() => handlePinSubmit()}
+                  className="h-12 bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs rounded-2xl flex items-center justify-center transition cursor-pointer"
+                >
+                  {isRtl ? 'تأكيد' : 'CONFIRM'}
+                </button>
+              </div>
+
+              {/* Secure footer badge */}
+              <div className="text-[9px] text-zinc-500 font-mono uppercase tracking-widest pt-2">
+                🛡️ LEVEL-ACCESS AUTH SECURITY
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
     </div>
   );
