@@ -519,7 +519,11 @@ export default function AdminDashboard({
   const handleSaveSiteSettings = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSiteSettings(editedSettings);
-    toastNotification(isRtl ? 'تم حفظ وتحديث محتوى الموقع بنجاح!' : 'Homepage layout content updated successfully!');
+    if (!editedSettings.disableIntro && editedSettings.introVideoUrl) {
+      toastNotification(isRtl ? 'تم حفظ وعرض الانترو 🎬' : 'Intro saved and displayed successfully! 🎬');
+    } else {
+      toastNotification(isRtl ? 'تم حفظ وتحديث محتوى الموقع بنجاح!' : 'Homepage layout content updated successfully!');
+    }
   };
 
   const handleSetupEditBranch = (branch: Branch) => {

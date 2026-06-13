@@ -460,6 +460,38 @@ export default function App() {
             if (storedVideo) {
               introVideoUrl = storedVideo;
             }
+          } else if (introVideoUrl && introVideoUrl.startsWith('firestore-chunks:intro')) {
+            const parts = introVideoUrl.split(':');
+            const version = parts[2] || 'default';
+            
+            const storedVersion = localStorage.getItem('hummer_intro_version');
+            const storedVideo = await getLargeAsset('introVideoUrl');
+            
+            if (storedVideo && storedVersion === version) {
+              introVideoUrl = storedVideo;
+            } else {
+              try {
+                const metaSnap = await getDoc(doc(db, 'intro_chunks', 'metadata'));
+                if (metaSnap.exists()) {
+                  const meta = metaSnap.data();
+                  const chunksCount = meta.chunksCount;
+                  let fullBase64 = '';
+                  for (let i = 0; i < chunksCount; i++) {
+                    const chunkSnap = await getDoc(doc(db, 'intro_chunks', `chunk_${i}`));
+                    if (chunkSnap.exists()) {
+                      fullBase64 += chunkSnap.data().data;
+                    }
+                  }
+                  if (fullBase64) {
+                    introVideoUrl = fullBase64;
+                    await saveLargeAsset('introVideoUrl', fullBase64);
+                    localStorage.setItem('hummer_intro_version', version);
+                  }
+                }
+              } catch (err) {
+                console.error("Failed to fetch intro video chunks from Firestore:", err);
+              }
+            }
           }
 
           setSiteSettings(prev => ({
@@ -638,7 +670,8 @@ export default function App() {
         }
       }
 
-      if (siteSettings.introVideoUrl === 'local-db:introVideoUrl') {
+      const isChunked = siteSettings.introVideoUrl && siteSettings.introVideoUrl.startsWith('firestore-chunks:intro');
+      if (siteSettings.introVideoUrl === 'local-db:introVideoUrl' || isChunked) {
         const storedVideo = await getLargeAsset('introVideoUrl');
         if (storedVideo) {
           updatedSettings.introVideoUrl = storedVideo;
@@ -780,9 +813,52 @@ export default function App() {
     // intercept video if base64
     if (newSettings.introVideoUrl && newSettings.introVideoUrl.startsWith('data:')) {
       await saveLargeAsset('introVideoUrl', newSettings.introVideoUrl);
-      settingsToSave.introVideoUrl = 'local-db:introVideoUrl';
+      
+      const updatedAt = Date.now();
+      settingsToSave.introVideoUrl = `firestore-chunks:intro:${updatedAt}`;
+      
+      try {
+        const fullBase64 = newSettings.introVideoUrl;
+        const chunkSize = 500 * 1024; // 500KB chunks
+        const chunksCount = Math.ceil(fullBase64.length / chunkSize);
+        
+        // Delete previous chunks
+        for (let i = 0; i < 50; i++) {
+          try {
+            await deleteDoc(doc(db, 'intro_chunks', `chunk_${i}`));
+          } catch (e) {}
+        }
+        
+        // Write the chunks to Firestore
+        for (let i = 0; i < chunksCount; i++) {
+          const chunkData = fullBase64.substring(i * chunkSize, (i + 1) * chunkSize);
+          await setDoc(doc(db, 'intro_chunks', `chunk_${i}`), {
+            index: i,
+            data: chunkData
+          });
+        }
+        
+        // Save the metadata so clients know how many chunks to retrieve
+        await setDoc(doc(db, 'intro_chunks', 'metadata'), {
+          chunksCount,
+          updatedAt
+        });
+      } catch (err) {
+        console.error("Failed saving video chunks to Firestore:", err);
+        settingsToSave.introVideoUrl = 'local-db:introVideoUrl';
+      }
     } else if (newSettings.introVideoUrl === '') {
       await deleteLargeAsset('introVideoUrl');
+      try {
+        await deleteDoc(doc(db, 'intro_chunks', 'metadata'));
+        for (let i = 0; i < 50; i++) {
+          try {
+            await deleteDoc(doc(db, 'intro_chunks', `chunk_${i}`));
+          } catch(e) {}
+        }
+      } catch (err) {
+        console.error("Failed to delete Firestore intro chunks:", err);
+      }
     }
 
     setSiteSettings(newSettings);
@@ -795,7 +871,7 @@ export default function App() {
       const fallbackSettings = { 
         ...settingsToSave, 
         logoUrl: newSettings.logoUrl?.startsWith('data:') ? 'local-db:logoUrl' : newSettings.logoUrl,
-        introVideoUrl: newSettings.introVideoUrl?.startsWith('data:') ? 'local-db:introVideoUrl' : newSettings.introVideoUrl 
+        introVideoUrl: settingsToSave.introVideoUrl
       };
       try {
         localStorage.setItem('hummer_site_settings', JSON.stringify(fallbackSettings));
