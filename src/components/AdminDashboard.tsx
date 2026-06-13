@@ -2778,10 +2778,10 @@ export default function AdminDashboard({
                           </div>
                         )}
                         
-                        <p className="text-[9px] text-zinc-500 font-bold leading-relaxed">
+                        <p className="text-[9px] text-amber-500/90 font-bold leading-relaxed">
                           {isRtl 
-                            ? 'معلومة: لتوفير استهلاك باقة الجوال، سيعمل هذا الفيديو في الخلفية عندما يفتح العميل الموقع لأول مرة فقط، ثم سنحفظ حالة المشاهدة لكي لا يظهر مجدداً.'
-                            : 'Hint: To preserve mobile data, this intro launches strictly on first-time opens only, saving play status inside client storage.'}
+                            ? '💡 تنبيه هام للغاية: لكي يظهر الانترو لكل الناس ويعمل على هواتف الآيفون (iOS) بكفاءة، يرجى دائماً استخدام زر الرفع (المربوط بكلاودنري) أو أدخل رابط مباشر للفيديو ينتهي بـ mp4.. رفع الملف كملف محلي سيعمل عندك أنت فقط.'
+                            : '💡 iPhone & Global Compatibility: To ensure the video works for everyone and streams successfully on iPhones (iOS Safari), please use the Cloudinary upload button above or enter a direct MP4 link.'}
                         </p>
                       </div>
                     </div>

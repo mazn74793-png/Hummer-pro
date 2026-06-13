@@ -8,42 +8,89 @@ interface IntroVideoOverlayProps {
 }
 
 export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOverlayProps) {
-  const [isOpen, setIsOpen] = useState(true);
+  const [hasDismissed, setHasDismissed] = useState(false);
+  const [videoSrc, setVideoSrc] = useState<string>('');
   const [hasStarted, setHasStarted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const isRtl = lang === 'ar';
 
+  const isOpen = !siteSettings.disableIntro && !hasDismissed;
+
+  // Reset dismissed state when the intro gets enabled or the video url changes
   useEffect(() => {
-    if (siteSettings.disableIntro) {
-      setIsOpen(false);
-      return;
+    if (!siteSettings.disableIntro) {
+      setHasDismissed(false);
+    }
+  }, [siteSettings.disableIntro, siteSettings.introVideoUrl]);
+
+  // Track video raw source changes and convert Base64 to Blob URL for Safari/iOS compatibility
+  useEffect(() => {
+    let activeUrl = siteSettings.introVideoUrl || '';
+    let objectUrl = '';
+
+    if (activeUrl.startsWith('data:')) {
+      try {
+        const parts = activeUrl.split(';base64,');
+        const contentType = parts[0].split(':')[1] || 'video/mp4';
+        const byteCharacters = atob(parts[1]);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+          byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        const blob = new Blob([byteArray], { type: contentType });
+        objectUrl = URL.createObjectURL(blob);
+        setVideoSrc(objectUrl);
+      } catch (e) {
+        console.error("Error creating Blob URL for video in Safari:", e);
+        setVideoSrc(activeUrl);
+      }
+    } else {
+      setVideoSrc(activeUrl);
     }
 
-    // Set a safety timeout to close the intro after 10-12 seconds max
-    // even if the video fails to fire the onEnded event.
+    return () => {
+      if (objectUrl) {
+        URL.revokeObjectURL(objectUrl);
+      }
+    };
+  }, [siteSettings.introVideoUrl]);
+
+  // Handle active playback and force start on Safari/iOS devices
+  useEffect(() => {
+    if (isOpen && videoRef.current && videoSrc) {
+      videoRef.current.load();
+      videoRef.current.play().catch(err => {
+        console.warn("Autoplay was prevented or failed on iOS Safari:", err);
+      });
+    }
+  }, [isOpen, videoSrc]);
+
+  // Set safety timeout to close the overlay if it gets stuck
+  useEffect(() => {
+    if (!isOpen) return;
+
     const safetyTimeout = setTimeout(() => {
-      setIsOpen(false);
-    }, 11000);
+      setHasDismissed(true);
+    }, 12000); // 12 seconds max safety limit
 
     return () => clearTimeout(safetyTimeout);
-  }, [siteSettings.disableIntro]);
+  }, [isOpen]);
 
-  if (siteSettings.disableIntro || !isOpen) {
+  if (!isOpen) {
     return null;
   }
 
   const handleEnded = () => {
-    // Smoothly exit when video finishes
-    setIsOpen(false);
+    setHasDismissed(true);
   };
 
   const handleLoadedMetadata = () => {
-    // We can auto-adjust safety timer if duration is successfully obtained
     if (videoRef.current && videoRef.current.duration) {
       const durationMs = videoRef.current.duration * 1000;
       const t = setTimeout(() => {
-        setIsOpen(false);
-      }, durationMs + 400); // 400ms margin
+        setHasDismissed(true);
+      }, durationMs + 400); // 400ms buffer after video naturally finishes
       return () => clearTimeout(t);
     }
   };
@@ -58,13 +105,14 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
           className="fixed inset-0 z-[9999] bg-zinc-950 flex items-center justify-center overflow-hidden select-none pointer-events-none"
         >
           {/* Main Fullscreen Video Background */}
-          {siteSettings.introVideoUrl && (
+          {videoSrc && (
             <video
               ref={videoRef}
-              src={siteSettings.introVideoUrl}
+              src={videoSrc}
               autoPlay
               muted
               playsInline
+              webkit-playsinline="true"
               onPlay={() => setHasStarted(true)}
               onEnded={handleEnded}
               onLoadedMetadata={handleLoadedMetadata}
