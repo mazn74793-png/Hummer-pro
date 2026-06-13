@@ -44,8 +44,8 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   deliveryTimeSubAr: 'سرعة التوصيل وعمر الجريء طيار',
   deliveryTimeSubEn: 'Average Delivery Time',
   hotline: '19033',
-  addressSummaryAr: 'شارع عباس العقاد | المعادي شارع 9 | المنيل',
-  addressSummaryEn: 'Road 9, Maadi | Abbas Akkad St, Cairo',
+  addressSummaryAr: '55 شارع ابراهيم الخليل، مدينة قباء، جسر السويس، قباء',
+  addressSummaryEn: '55 Ibrahim Al-Khalil St, Quba City, Gesr Al-Suez, Quba',
   deliveryNoticeAr: 'ملاحظة: خدمة الدليفري والتوصيل تعمل على مدار الساعة طوال أيام الأسبوع حتى الساعة الرابعة فجراً في أي طقس!',
   deliveryNoticeEn: 'Notice: Delivery service and takeout runs 24/7 in extreme weather conditions until 04:00 AM!',
   footerDescAr: 'موقع مطاعم هامر الرسمي لكافة كريبات مصر الشهيرة، فراخ بروستد كريسبي على أصولها، تتبيلة سحرية لا غنى عنها!',
@@ -432,6 +432,16 @@ export default function App() {
       async (snapshot) => {
         if (snapshot.exists()) {
           const remoteSettings = snapshot.data() as SiteSettings;
+
+          // Auto-migrate old Abbas Akkad address or missing address to Quba address immediately
+          if (remoteSettings.addressSummaryAr === 'شارع عباس العقاد | المعادي شارع 9 | المنيل' || !remoteSettings.addressSummaryAr) {
+            remoteSettings.addressSummaryAr = '55 شارع ابراهيم الخليل، مدينة قباء، جسر السويس، قباء';
+            remoteSettings.addressSummaryEn = '55 Ibrahim Al-Khalil St, Quba City, Gesr Al-Suez, Quba';
+            setDoc(doc(db, 'settings', 'global'), remoteSettings, { merge: true }).catch(err => {
+              console.error("Auto-migrating settings failed:", err);
+            });
+          }
+
           let logoUrl = remoteSettings.logoUrl;
           let introVideoUrl = remoteSettings.introVideoUrl;
 

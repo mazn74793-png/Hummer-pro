@@ -204,7 +204,7 @@ export default function HeroSection({ onOpenWheel, lang, siteSettings }: HeroSec
                     <span>{isRtl ? 'تفضل بزيارتنا' : 'Visit Branches'}</span>
                   </h4>
                   <p className="text-zinc-500 font-bold text-xs tracking-tight">
-                    {isRtl ? (siteSettings?.addressSummaryAr || 'شارع عباس العقاد | المعادي شارع 9 | المنيل') : (siteSettings?.addressSummaryEn || 'Road 9, Maadi | Abbas Akkad St, Cairo')}
+                    {isRtl ? (siteSettings?.addressSummaryAr || '55 شارع ابراهيم الخليل، مدينة قباء، جسر السويس، قباء') : (siteSettings?.addressSummaryEn || '55 Ibrahim Al-Khalil St, Quba City, Gesr Al-Suez, Quba')}
                   </p>
                 </div>
               </div>

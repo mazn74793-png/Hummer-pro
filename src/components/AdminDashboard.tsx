@@ -453,6 +453,7 @@ export default function AdminDashboard({
   const [branchFormAddressAr, setBranchFormAddressAr] = useState('');
   const [branchFormAddressEn, setBranchFormAddressEn] = useState('');
   const [branchFormPhone, setBranchFormPhone] = useState('');
+  const [branchFormDeliveryHotline, setBranchFormDeliveryHotline] = useState('');
   const [branchFormHoursAr, setBranchFormHoursAr] = useState('');
   const [branchFormHoursEn, setBranchFormHoursEn] = useState('');
 
@@ -469,6 +470,7 @@ export default function AdminDashboard({
     setBranchFormAddressAr(branch.addressAr || '');
     setBranchFormAddressEn(branch.addressEn || '');
     setBranchFormPhone(branch.phone || '');
+    setBranchFormDeliveryHotline(branch.deliveryHotline || '');
     setBranchFormHoursAr(branch.hoursAr || '');
     setBranchFormHoursEn(branch.hoursEn || '');
   };
@@ -480,6 +482,7 @@ export default function AdminDashboard({
     setBranchFormAddressAr('');
     setBranchFormAddressEn('');
     setBranchFormPhone('');
+    setBranchFormDeliveryHotline('');
     setBranchFormHoursAr('');
     setBranchFormHoursEn('');
   };
@@ -499,6 +502,7 @@ export default function AdminDashboard({
         addressAr: branchFormAddressAr.trim(),
         addressEn: branchFormAddressEn.trim(),
         phone: branchFormPhone.trim(),
+        deliveryHotline: branchFormDeliveryHotline.trim(),
         hoursAr: branchFormHoursAr.trim(),
         hoursEn: branchFormHoursEn.trim()
       };
@@ -513,6 +517,7 @@ export default function AdminDashboard({
             addressAr: branchFormAddressAr.trim(),
             addressEn: branchFormAddressEn.trim(),
             phone: branchFormPhone.trim(),
+            deliveryHotline: branchFormDeliveryHotline.trim(),
             hoursAr: branchFormHoursAr.trim(),
             hoursEn: branchFormHoursEn.trim()
           };
@@ -2422,6 +2427,29 @@ export default function AdminDashboard({
                       </div>
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
+                        {/* Address Summary Ar */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'ملخص عناوين الفروع (عربي):' : 'Branches Address Summary (AR):'}</label>
+                          <input
+                            type="text"
+                            value={editedSettings?.addressSummaryAr || ''}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, addressSummaryAr: e.target.value })}
+                            className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 text-right"
+                          />
+                        </div>
+                        {/* Address Summary En */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'ملخص عناوين الفروع (إنجليزي):' : 'Branches Address Summary (EN):'}</label>
+                          <input
+                            type="text"
+                            value={editedSettings?.addressSummaryEn || ''}
+                            onChange={(e) => setEditedSettings({ ...editedSettings, addressSummaryEn: e.target.value })}
+                            className="w-full bg-zinc-950 border border-zinc-800 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-650 text-left ltr"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-right">
                         {/* Delivery notice Ar */}
                         <div className="space-y-1">
                           <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'تنويه خدمة التوصيل الإضافي (عربي):' : 'Delivery Slogan Notice (Arabic):'}</label>
@@ -2810,7 +2838,7 @@ export default function AdminDashboard({
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-right">
+                      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 text-right">
                         {/* Hotline/Direct Phone */}
                         <div className="space-y-1">
                           <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'الرقم المباشر أو الموبايل للفرع:' : 'Direct Phone Contact:'}</label>
@@ -2819,6 +2847,17 @@ export default function AdminDashboard({
                             placeholder="012XXXXXXXX"
                             value={branchFormPhone}
                             onChange={(e) => setBranchFormPhone(e.target.value)}
+                            className="w-full bg-zinc-950 border border-zinc-850 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-655 font-mono text-center"
+                          />
+                        </div>
+                        {/* Delivery Hotline */}
+                        <div className="space-y-1">
+                          <label className="text-[10px] font-black text-zinc-400 block">{isRtl ? 'الخط الساخن للتوصيل بالتحديد:' : 'Branch Delivery Hotline:'}</label>
+                          <input
+                            type="text"
+                            placeholder="e.g. 19033"
+                            value={branchFormDeliveryHotline}
+                            onChange={(e) => setBranchFormDeliveryHotline(e.target.value)}
                             className="w-full bg-zinc-950 border border-zinc-850 p-3 text-xs font-bold text-white rounded-xl outline-none focus:border-red-655 font-mono text-center"
                           />
                         </div>
