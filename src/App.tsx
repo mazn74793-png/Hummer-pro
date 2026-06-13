@@ -842,6 +842,36 @@ export default function App() {
     localStorage.setItem('hummer_active_cart', JSON.stringify(items));
   };
 
+  // Play dynamic soft round bubble pop feedback sound using web Audio API
+  const playPopSound = () => {
+    try {
+      const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContextClass) return;
+      const audioCtx = new AudioContextClass();
+      
+      const osc = audioCtx.createOscillator();
+      const gainNode = audioCtx.createGain();
+      
+      osc.connect(gainNode);
+      gainNode.connect(audioCtx.destination);
+      
+      osc.type = 'sine';
+      // Pleasant starting pitch sweeping down quickly to organic low bass
+      osc.frequency.setValueAtTime(350, audioCtx.currentTime);
+      osc.frequency.exponentialRampToValueAtTime(110, audioCtx.currentTime + 0.14);
+      
+      // Quick swell/decay curve for perfect soft tactile feedback
+      gainNode.gain.setValueAtTime(0.18, audioCtx.currentTime);
+      gainNode.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + 0.15);
+      
+      osc.start(audioCtx.currentTime);
+      osc.stop(audioCtx.currentTime + 0.15);
+    } catch (e) {
+      // Browsers safely block autoplay until first positive click gesture is performed 
+      console.warn('Soft pop audio feedback is bypassed or blocked by user gesture policy:', e);
+    }
+  };
+
   // 1. Add normal menu item
   const handleAddToCart = (
     item: MenuItem,
@@ -882,6 +912,7 @@ export default function App() {
     }
 
     saveCart(updatedCart);
+    playPopSound();
     setAddedItemToast({
       show: true,
       nameAr: item.nameAr,
@@ -923,6 +954,7 @@ export default function App() {
     };
 
     saveCart([...cartItems, newCartItem]);
+    playPopSound();
     setAddedItemToast({
       show: true,
       nameAr: customDetails.nameAr,
