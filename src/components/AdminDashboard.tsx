@@ -807,44 +807,34 @@ export default function AdminDashboard({
     if (!file) return;
     setIsLogoUploading(true);
     
-    // Check if Cloudinary is configured
-    const isCloudinaryConfigured = cloudName && cloudName !== 'duvsy8pzn' && uploadPreset && uploadPreset !== 'hummer_preset';
-    
-    if (isCloudinaryConfigured) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', uploadPreset.trim());
-        const url = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/image/upload`;
-        const res = await fetch(url, { method: 'POST', body: formData });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.secure_url) {
-            setEditedSettings(prev => ({ ...prev, logoUrl: data.secure_url }));
-            toastNotification(isRtl ? 'تم رفع اللوجو إلى السحابة بنجاح!' : 'Logo uploaded to Cloudinary successfully!');
-            setIsLogoUploading(false);
-            return;
-          }
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset.trim());
+      const url = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/image/upload`;
+      const res = await fetch(url, { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.secure_url) {
+          setEditedSettings(prev => ({ ...prev, logoUrl: data.secure_url }));
+          toastNotification(isRtl ? 'تم رفع اللوجو إلى السحابة بنجاح!' : 'Logo uploaded to Cloudinary successfully!');
+        } else {
+          throw new Error('No secure_url found');
         }
-      } catch (err) {
-        console.warn("Cloudinary logo upload failed, falling back to local Base64", err);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || 'Server error');
       }
+    } catch (err: any) {
+      console.error("Cloudinary logo upload failed:", err);
+      toastNotification(
+        isRtl 
+          ? `قم بتهيئة كلاودنري للصور أولاً! فشل الرفع: ${err.message}` 
+          : `Configure Cloudinary for images first! Upload failed: ${err.message}`
+      );
+    } finally {
+      setIsLogoUploading(false);
     }
-    
-    // Fallback to Base64
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setEditedSettings(prev => ({ ...prev, logoUrl: reader.result }));
-        toastNotification(isRtl ? 'تم تحويل وحفظ اللوجو بنجاح!' : 'Logo loaded and saved successfully!');
-      }
-      setIsLogoUploading(false);
-    };
-    reader.onerror = () => {
-      setIsLogoUploading(false);
-      toastNotification(isRtl ? 'فشل قراءة ملف اللوجو!' : 'Failed to read Logo file!');
-    };
-    reader.readAsDataURL(file);
   };
 
   const handleIntroVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -856,43 +846,35 @@ export default function AdminDashboard({
     }
     
     setIsVideoUploading(true);
-    const isCloudinaryConfigured = cloudName && cloudName !== 'duvsy8pzn' && uploadPreset && uploadPreset !== 'hummer_preset';
     
-    if (isCloudinaryConfigured) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        formData.append('upload_preset', uploadPreset.trim());
-        const url = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/video/upload`;
-        const res = await fetch(url, { method: 'POST', body: formData });
-        if (res.ok) {
-          const data = await res.json();
-          if (data.secure_url) {
-            setEditedSettings(prev => ({ ...prev, introVideoUrl: data.secure_url }));
-            toastNotification(isRtl ? 'تم رفع الفيديو والربط بنجاح!' : 'Video uploaded successfully to your Cloud!');
-            setIsVideoUploading(false);
-            return;
-          }
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('upload_preset', uploadPreset.trim());
+      const url = `https://api.cloudinary.com/v1_1/${cloudName.trim()}/video/upload`;
+      const res = await fetch(url, { method: 'POST', body: formData });
+      if (res.ok) {
+        const data = await res.json();
+        if (data.secure_url) {
+          setEditedSettings(prev => ({ ...prev, introVideoUrl: data.secure_url }));
+          toastNotification(isRtl ? 'تم رفع فيديو المقدمة إلى السحابة بنجاح! 🎬' : 'Intro video uploaded to Cloudinary successfully! 🎬');
+        } else {
+          throw new Error('No secure_url found');
         }
-      } catch (err) {
-        console.warn("Cloudinary video upload failed, trying local Base64 inline", err);
+      } else {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData?.error?.message || 'Server error');
       }
+    } catch (err: any) {
+      console.error("Cloudinary video upload failed:", err);
+      toastNotification(
+        isRtl 
+          ? `فشل رفع الفيديو! تأكد من تهيئة الإعدادات وصلاحية حساب كلاودنري: ${err.message}` 
+          : `Configure Cloudinary correctly! Video upload failed: ${err.message}`
+      );
+    } finally {
+      setIsVideoUploading(false);
     }
-    
-    // Fallback to Base64
-    const reader = new FileReader();
-    reader.onload = () => {
-      if (typeof reader.result === 'string') {
-        setEditedSettings(prev => ({ ...prev, introVideoUrl: reader.result }));
-        toastNotification(isRtl ? 'تم تحميل وحفظ فيديو الافتتاح بنجاح!' : 'Intro video saved offline successfully!');
-      }
-      setIsVideoUploading(false);
-    };
-    reader.onerror = () => {
-      setIsVideoUploading(false);
-      toastNotification(isRtl ? 'فشل قراءة ملف الفيديو!' : 'Failed to read video file!');
-    };
-    reader.readAsDataURL(file);
   };
 
   // Custom alert utility
