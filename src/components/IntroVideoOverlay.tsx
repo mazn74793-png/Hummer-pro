@@ -68,44 +68,10 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
               onPlay={() => setHasStarted(true)}
               onEnded={handleEnded}
               onLoadedMetadata={handleLoadedMetadata}
-              className="absolute inset-0 w-full h-full object-cover brightness-[0.7] scale-[1.02]"
+              className="absolute inset-0 w-full h-full object-cover"
               id="intro-cinematic-video"
             />
           )}
-
-          {/* Golden Warm Gradient Overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-zinc-950/40 pointer-events-none" />
-
-          {/* Middle Branding/Chef Titles (Cinematic fade-in) */}
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            animate={hasStarted ? { opacity: 1, y: 0 } : { opacity: 0.4 }}
-            transition={{ delay: 0.3, duration: 1.2, ease: 'easeOut' }}
-            className="relative z-10 text-center max-w-lg px-6 flex flex-col items-center gap-4"
-          >
-            {/* Pulsing Light Indicator */}
-            <div className="w-1.5 h-1.5 rounded-full bg-red-600 animate-ping mb-2" />
-
-            <h1 className="text-3xl sm:text-5xl font-black font-sans text-white tracking-widest uppercase drop-shadow-2xl">
-              {isRtl ? 'مطعم هـامـر 🔥' : 'HUMMER RESTAURANT'}
-            </h1>
-            
-            <p className="text-xs sm:text-sm font-black tracking-widest text-[#f59e0b] px-4 py-1.5 rounded-full bg-black/60 border border-zinc-800/80 uppercase font-sans drop-shadow-lg">
-              {isRtl ? 'أشهى كريبات وأقوى وجبات الفراخ الكريسبي 🍕' : 'The Ultimate Crispy Chicken & Crepes'}
-            </p>
-
-            <motion.div
-              animate={{ opacity: [0.4, 1, 0.4] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="text-[10px] sm:text-xs text-zinc-400 font-extrabold font-sans mt-8 tracking-widest"
-            >
-              {isRtl ? 'جاري تجهيز المتعة والافتتاح... 🍗' : 'Preparing deliciousness... 🍗'}
-            </motion.div>
-          </motion.div>
-
-          {/* Simple Top & Bottom cinematic black bars effect */}
-          <div className="absolute top-0 left-0 right-0 h-[6vh] bg-black/80 pointer-events-none" />
-          <div className="absolute bottom-0 left-0 right-0 h-[6vh] bg-black/80 pointer-events-none" />
         </motion.div>
       )}
     </AnimatePresence>
