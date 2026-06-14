@@ -1183,7 +1183,7 @@ export default function App() {
   // Apply Coupon won from lucky wheel
   const handleApplyGiftCode = (code: string, giftName: string) => {
     setChosenCouponCode(code);
-    setIsCartOpen(true); // Open cart immediately to show discount loading!
+    // Applied successfully behind the scenes without opening the cart
   };
 
   // Filter Menu List

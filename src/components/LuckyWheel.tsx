@@ -118,6 +118,25 @@ export default function LuckyWheel({ onApplyGiftCode, lang, siteSettings }: Luck
     }
   };
 
+  const getShortLabel = (prize: { textAr: string; textEn: string; code: string }, isAr: boolean) => {
+    const code = (prize.code || '').toUpperCase().trim();
+    if (code.includes('HUMMER10') || code.includes('10')) return isAr ? 'خصم ١٠٪ 💸' : '10% OFF 💸';
+    if (code.includes('MEGA20') || code.includes('20')) return isAr ? 'خصم ٢٠٪ 🔥' : '20% OFF 🔥';
+    if (code.includes('PEPSI')) return isAr ? 'بيبسي 🥤' : 'Pepsi 🥤';
+    if (code.includes('FRIES')) return isAr ? 'بطاطس 🍟' : 'Fries 🍟';
+    if (code.includes('COLESLAW')) return isAr ? 'كول سلو 🥗' : 'Coleslaw 🥗';
+    if (!code) return isAr ? 'حظ سعيد 🍀' : 'Try Again 🍀';
+    
+    // Parse numeric discount
+    if (prize.textAr.includes('خصم')) {
+      const match = prize.textAr.match(/\d+/);
+      if (match) return isAr ? `خصم ${match[0]}%` : `${match[0]}% OFF`;
+    }
+    
+    const baseText = isAr ? prize.textAr : prize.textEn;
+    return baseText.split('(')[0].trim();
+  };
+
   return (
     <section className="w-full max-w-4xl mx-auto py-12 px-4 text-right" dir={isRtl ? 'rtl' : 'ltr'} id="lucky-wheel-section">
       <div className="bg-white border-2 border-red-600/10 rounded-[2.5rem] p-6 md:p-10 text-center shadow-lg relative overflow-hidden text-[#18181b]">
@@ -135,7 +154,7 @@ export default function LuckyWheel({ onApplyGiftCode, lang, siteSettings }: Luck
           </h3>
           <p className="text-zinc-500 text-xs font-bold max-w-xl text-center leading-relaxed">
             {isRtl
-              ? 'محتار تاكل إيه وعايز هدية؟ دير عجحة الحظ الاستثنائية الحين! العجلة متصلة مباشرة بلوحة الإدارة، والطهي مجهزلك هدايا تضاف لسلتك فوراً!'
+              ? 'محتار تاكل إيه وعايز هدية؟ دير عجلة الحظ الاستثنائية الحين! العجلة متصلة مباشرة بلوحة الإدارة، والطهي مجهزلك هدايا تضاف لسلتك فوراً!'
               : 'Unsure what to order today? Roll the active chef wheel to reveal dynamic discounts and rewards linked directly into your checkout flow.'}
           </p>
         </div>
@@ -143,23 +162,51 @@ export default function LuckyWheel({ onApplyGiftCode, lang, siteSettings }: Luck
         {/* Flat Grid Layout with wheel and settings details */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center pt-2">
           
-          {/* Column 1: Custom Vector SVG Wheel */}
+          {/* Column 1: Custom Vector SVG Wheel with fancy blinking LEDs */}
           <div className="relative w-72 h-72 mx-auto flex items-center justify-center">
-            {/* Top Pointer */}
-            <div className="absolute -top-2 z-20 transition-transform">
-              <div className="w-0 h-0 border-l-[12px] border-l-transparent border-r-[12px] border-r-transparent border-t-[20px] border-t-red-650" />
-              <div className="w-3 h-3 bg-white rounded-full mx-auto -mt-4 ring-2 ring-red-650" />
+            {/* Elegant Pointer Arrow at top center */}
+            <div className="absolute -top-2 z-30 transition-transform">
+              <div className="w-0 h-0 border-l-[14px] border-l-transparent border-r-[14px] border-r-transparent border-t-[24px] border-t-red-600 filter drop-shadow-md" />
+              <div className="w-3.5 h-3.5 bg-white rounded-full mx-auto -mt-5 ring-2 ring-red-600 shadow-sm" />
             </div>
 
-            <div className="absolute inset-0 border-4 border-red-600/10 rounded-full scale-102 pointer-events-none" />
+            {/* Glowing Golden Las Vegas Blinking LED Outer Rim */}
+            <div className="absolute inset-0 border-[10px] border-amber-500 rounded-full scale-[1.01] shadow-[0_0_25px_rgba(245,158,11,0.55)] pointer-events-none flex items-center justify-center z-20">
+              {/* Outer LED bulb elements */}
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 360) / 12;
+                return (
+                  <div
+                    key={i}
+                    className="absolute w-2.5 h-2.5 rounded-full bg-yellow-300 shadow-[0_0_10px_#f59e0b] animate-pulse"
+                    style={{
+                      transform: `rotate(${angle}deg) translateY(-138px)`,
+                      animationDelay: `${i * 120}ms`,
+                    }}
+                  />
+                );
+              })}
+              {[...Array(12)].map((_, i) => {
+                const angle = (i * 360) / 12;
+                return (
+                  <div
+                    key={`dot-${i}`}
+                    className="absolute w-1.5 h-1.5 rounded-full bg-white shadow-[0_0_4px_#ffffff]"
+                    style={{
+                      transform: `rotate(${angle}deg) translateY(-138px)`,
+                    }}
+                  />
+                );
+              })}
+            </div>
 
+            {/* Actually rotating physical-feeling wheel element in Framer Motion */}
             <motion.div
-              style={{ rotate: rotation }}
-              animate={spinning ? undefined : { rotate: rotation }}
-              transition={{ duration: 5, ease: [0.25, 0.1, 0.25, 1] }}
-              className="w-64 h-64 rounded-full shadow-md relative select-none cursor-pointer overflow-hidden border-4 border-zinc-900"
+              animate={{ rotate: rotation }}
+              transition={{ duration: 5, ease: [0.15, 0.85, 0.2, 1] }}
+              className="w-64 h-64 rounded-full shadow-2xl relative select-none cursor-pointer overflow-hidden border-8 border-zinc-950 bg-zinc-900 ring-4 ring-zinc-950 z-10"
             >
-              <svg viewBox="0 0 100 100" className="w-[100%] h-[100%]">
+              <svg viewBox="0 0 100 100" className="w-full h-full">
                 <g transform="translate(50, 50)">
                   {PRIZES.map((prize, index) => {
                     const angle = 360 / PRIZES.length;
@@ -173,28 +220,32 @@ export default function LuckyWheel({ onApplyGiftCode, lang, siteSettings }: Luck
                     const y2 = 50 * Math.sin(rad(endAngle));
 
                     const textAngle = startAngle + (angle / 2);
-                    const textRadius = 26; 
+                    const textRadius = 27; 
                     const tx = textRadius * Math.cos(rad(textAngle));
                     const ty = textRadius * Math.sin(rad(textAngle));
 
+                    const displayLabel = getShortLabel(prize, isRtl);
+
                     return (
                       <g key={index}>
+                        {/* Pizza Segment */}
                         <path
                           d={`M0,0 L${x1},${y1} A50,50 0 0,1 ${x2},${y2} Z`}
                           fill={prize.color}
-                          className="transition-colors duration-300"
+                          className="transition-colors duration-300 stroke-[0.3] stroke-white/20"
                         />
+                        {/* Radial Sector Text */}
                         <text
                           x={tx}
                           y={ty}
                           fill="#ffffff"
-                          fontSize="3.6"
+                          fontSize="3.5"
                           fontWeight="900"
                           textAnchor="middle"
                           transform={`rotate(${textAngle}, ${tx}, ${ty})`}
-                          className="font-sans select-none"
+                          className="font-sans select-none filter drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)] fill-white"
                         >
-                          {isRtl ? prize.textAr.split(' ')[0] : prize.textEn.split(' ')[0]}
+                          {displayLabel}
                         </text>
                       </g>
                     );
@@ -202,8 +253,8 @@ export default function LuckyWheel({ onApplyGiftCode, lang, siteSettings }: Luck
                 </g>
               </svg>
 
-              {/* Center Cap */}
-              <div className="absolute inset-x-0 inset-y-0 m-auto w-10 h-10 bg-white rounded-full border-4 border-zinc-950 shadow-sm flex items-center justify-center font-sans font-black text-zinc-950 text-[10px] z-10 select-none">
+              {/* Center Metal Cap */}
+              <div className="absolute inset-x-0 inset-y-0 m-auto w-10 h-10 bg-gradient-to-tr from-amber-600 via-amber-400 to-amber-200 rounded-full border-4 border-zinc-950 shadow-md flex items-center justify-center font-sans font-black text-zinc-950 text-[10px] z-20 select-none">
                 {isRtl ? 'هامر' : 'HMR'}
               </div>
             </motion.div>

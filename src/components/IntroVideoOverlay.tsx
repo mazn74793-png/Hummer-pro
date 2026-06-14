@@ -58,11 +58,40 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
 
   // Handle active playback and force start on Safari/iOS devices
   useEffect(() => {
-    if (isOpen && videoRef.current && videoSrc) {
-      videoRef.current.load();
-      videoRef.current.play().catch(err => {
-        console.warn("Autoplay was prevented or failed on iOS Safari:", err);
-      });
+    const video = videoRef.current;
+    if (isOpen && video && videoSrc) {
+      // Force settings on the DOM node directly to ensure Safari compliance
+      video.defaultMuted = true;
+      video.muted = true;
+      video.setAttribute('muted', '');
+      video.setAttribute('playsinline', 'true');
+      video.setAttribute('webkit-playsinline', 'true');
+      video.setAttribute('controls', 'false');
+      video.removeAttribute('controls');
+
+      video.load();
+      
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise.catch(err => {
+          console.warn("Autoplay was prevented on iOS Safari. Setup seamless click/touch fallback listener:", err);
+          
+          const playOnInteraction = () => {
+            if (videoRef.current) {
+              videoRef.current.play()
+                .then(() => {
+                  setHasStarted(true);
+                  document.removeEventListener('touchstart', playOnInteraction);
+                  document.removeEventListener('click', playOnInteraction);
+                })
+                .catch(e => console.error("Interaction play attempt failed:", e));
+            }
+          };
+          
+          document.addEventListener('touchstart', playOnInteraction, { passive: true });
+          document.addEventListener('click', playOnInteraction, { passive: true });
+        });
+      }
     }
   }, [isOpen, videoSrc]);
 
