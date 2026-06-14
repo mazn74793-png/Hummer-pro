@@ -197,7 +197,6 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
   useEffect(() => {
     if (!isOpen) return;
     const safetyTimeout = setTimeout(() => {
-      console.warn("Loading delayed - dismissing intro to prevent blocking user stay");
       dismissIntro();
     }, 4500);
     return () => clearTimeout(safetyTimeout);
