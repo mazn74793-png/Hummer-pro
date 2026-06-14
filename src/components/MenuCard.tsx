@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Flame, Plus, Check, Info, MessageSquare } from 'lucide-react';
+import { Flame, Plus, Check, Info, MessageSquare, Heart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MenuItem, SizeOption } from '../types';
-import { db, handleFirestoreError, OperationType } from '../firebase';
-import { collection, query, where, onSnapshot } from 'firebase/firestore';
+import { db, auth, handleFirestoreError, OperationType } from '../firebase';
+import { collection, query, where, onSnapshot, doc, setDoc } from 'firebase/firestore';
 import ProductCommentsModal from './ProductCommentsModal';
 
 interface MenuCardProps {
@@ -11,9 +11,18 @@ interface MenuCardProps {
   onAddToCart: (item: MenuItem, quantity: number, selectedSize?: SizeOption, isSpicy?: boolean, notes?: string) => void;
   lang: 'ar' | 'en';
   isAdmin?: boolean;
+  isFavorite?: boolean;
+  onToggleFavorite?: (itemId: string) => void;
 }
 
-export default function MenuCard({ item, onAddToCart, lang, isAdmin = false }: MenuCardProps) {
+export default function MenuCard({ 
+  item, 
+  onAddToCart, 
+  lang, 
+  isAdmin = false,
+  isFavorite = false,
+  onToggleFavorite
+}: MenuCardProps) {
   const isRtl = lang === 'ar';
   const hasSizes = item.sizes && item.sizes.length > 0;
 
@@ -21,20 +30,86 @@ export default function MenuCard({ item, onAddToCart, lang, isAdmin = false }: M
   const [commentCount, setCommentCount] = useState(0);
   const [showCommentsModal, setShowCommentsModal] = useState(false);
 
+  // Real-time star rating state
+  const [averageRating, setAverageRating] = useState<number>(5.0);
+  const [totalRatingsCount, setTotalRatingsCount] = useState<number>(0);
+  const [userRating, setUserRating] = useState<number>(0);
+
   useEffect(() => {
-    const q = query(
+    const qComments = query(
       collection(db, 'product_comments'),
       where('productId', '==', item.id)
     );
-    const unsubscribe = onSnapshot(q, (snapshot) => {
+    const unsubscribeComments = onSnapshot(qComments, (snapshot) => {
       setCommentCount(snapshot.size);
     }, (error) => {
-      // Passive catch for guests, with standard error logging diagnostics
-      console.warn('Passive comments fetch warning:', error);
+      console.warn('Comments fetch warning:', error);
       handleFirestoreError(error, OperationType.LIST, 'product_comments');
     });
-    return () => unsubscribe();
-  }, [item.id]);
+
+    const qRatings = query(
+      collection(db, 'product_ratings'),
+      where('productId', '==', item.id)
+    );
+    const unsubscribeRatings = onSnapshot(qRatings, (snapshot) => {
+      if (!snapshot.empty) {
+        const ratingsList = snapshot.docs.map(dDoc => dDoc.data() as { rating: number, userId: string });
+        const sum = ratingsList.reduce((acc, r) => acc + r.rating, 0);
+        const avg = sum / ratingsList.length;
+        setAverageRating(Math.round(avg * 10) / 10);
+        setTotalRatingsCount(ratingsList.length);
+
+        if (auth.currentUser) {
+          const myRatingDoc = ratingsList.find(r => r.userId === auth.currentUser?.uid);
+          if (myRatingDoc) {
+            setUserRating(myRatingDoc.rating);
+          }
+        }
+      } else {
+        setAverageRating(5.0);
+        setTotalRatingsCount(0);
+      }
+    }, (err) => {
+      console.warn('Ratings fetch warning:', err);
+      handleFirestoreError(err, OperationType.LIST, 'product_ratings');
+    });
+
+    return () => {
+      unsubscribeComments();
+      unsubscribeRatings();
+    };
+  }, [item.id, auth.currentUser]);
+
+  // Handle rating submits
+  const handleRate = async (starValue: number) => {
+    let user = auth.currentUser;
+    if (!user) {
+      // If not logged in, we sign in anonymously instantly
+      try {
+        const { signInAnonymously } = await import('firebase/auth');
+        const credential = await signInAnonymously(auth);
+        user = credential.user;
+      } catch (err) {
+        console.error("Anonymous authentication for rating failed:", err);
+      }
+    }
+
+    if (user) {
+      try {
+        const ratingId = `${user.uid}_${item.id}`;
+        await setDoc(doc(db, 'product_ratings', ratingId), {
+          id: ratingId,
+          userId: user.uid,
+          productId: item.id,
+          rating: starValue,
+          createdAt: new Date().toISOString()
+        });
+        setUserRating(starValue);
+      } catch (err) {
+        console.error("Failed to store rating to Firestore:", err);
+      }
+    }
+  };
 
   // Configuration state
   const [isSpicy, setIsSpicy] = useState<boolean>(item.spicyOption ? true : false);
@@ -53,7 +128,6 @@ export default function MenuCard({ item, onAddToCart, lang, isAdmin = false }: M
     onAddToCart(item, quantity, selectedSize, isSpicy, notes);
     setIsAdded(true);
     setTimeout(() => setIsAdded(false), 2000);
-    // Reset quantity/notes
     setQuantity(1);
     setNotes('');
     setShowNotesField(false);
@@ -62,10 +136,25 @@ export default function MenuCard({ item, onAddToCart, lang, isAdmin = false }: M
   return (
     <motion.div
       layout
-      whileHover={{ y: -6 }}
-      transition={{ duration: 0.3 }}
-      className="flex flex-col h-full bg-white border border-zinc-100 hover:border-zinc-900 rounded-2xl sm:rounded-[2rem] overflow-hidden relative shadow-xs hover:shadow-md transition-all text-right"
+      whileHover={{ y: -8, scale: 1.01 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      className="flex flex-col h-full bg-white border border-zinc-150 hover:border-red-500 rounded-2xl sm:rounded-[2rem] overflow-hidden relative shadow-sm hover:shadow-[0_0_20px_rgba(220,38,38,0.12)] transition-all duration-300 text-right"
     >
+      {/* Heart/Favorite Button */}
+      {onToggleFavorite && (
+        <button
+          type="button"
+          onClick={() => onToggleFavorite(item.id)}
+          className="absolute top-2.5 left-2.5 sm:top-4 sm:left-4 z-10 p-2 bg-white/90 hover:bg-white text-zinc-400 hover:text-red-600 rounded-full shadow-md backdrop-blur-xs transition cursor-pointer"
+        >
+          <Heart
+            className={`w-3.5 h-3.5 sm:w-4.5 sm:h-4.5 transition-all ${
+              isFavorite ? 'fill-red-600 text-red-600 scale-110' : 'text-zinc-500 hover:scale-110'
+            }`}
+          />
+        </button>
+      )}
+
       {/* Visual Badge/Tag if any */}
       {item.tags && item.tags.length > 0 && (
         <div className="absolute top-2 right-2 sm:top-4 sm:right-4 z-10 flex flex-col gap-0.5 sm:gap-1 items-end">
@@ -107,6 +196,31 @@ export default function MenuCard({ item, onAddToCart, lang, isAdmin = false }: M
           <h3 className="text-[11px] sm:text-base font-black text-zinc-900 tracking-tight line-clamp-1 font-sans">
             {isRtl ? item.nameAr : item.nameEn}
           </h3>
+
+          {/* Real-time Star Rating Component */}
+          <div className="flex items-center justify-between mt-1 mb-1" dir="ltr">
+            <div className="flex gap-0.5">
+              {[1, 2, 3, 4, 5].map((star) => {
+                const isLit = userRating >= star || (!userRating && averageRating >= star);
+                return (
+                  <button
+                    key={star}
+                    type="button"
+                    onClick={() => handleRate(star)}
+                    className="p-0.5 hover:scale-125 transition transform focus:outline-none cursor-pointer"
+                  >
+                    <span className={`text-[12px] sm:text-[15px] leading-none ${isLit ? 'text-amber-400' : 'text-zinc-200'}`}>
+                      ★
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <span className="text-[9px] sm:text-[11px] text-zinc-500 font-mono font-black">
+              ⭐️ {averageRating.toFixed(1)} {totalRatingsCount > 0 ? `(${totalRatingsCount})` : ''}
+            </span>
+          </div>
+
           <p className="text-zinc-500 text-[9px] sm:text-[11px] font-bold mt-0.5 sm:mt-1.5 leading-relaxed line-clamp-2">
             {isRtl ? item.descriptionAr : item.descriptionEn}
           </p>

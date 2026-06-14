@@ -58,5 +58,11 @@ service cloud.firestore {
       allow read, create: if true;
       allow update, delete: if isAdmin();
     }
+
+    // Product Ratings Collection (Public Read/Create/Update, Admin Delete)
+    match /product_ratings/{ratingId} {
+      allow read, create, update: if true;
+      allow delete: if isAdmin();
+    }
   }
 }

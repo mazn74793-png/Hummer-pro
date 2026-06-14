@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { ShoppingCart, Trash2, Tag, ChevronLeft, MapPin, Phone, User, CheckCircle2, Ticket } from 'lucide-react';
+import { ShoppingCart, Trash2, Tag, ChevronLeft, MapPin, Phone, User, CheckCircle2, Ticket, Plus, Check } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CartItem, SiteSettings } from '../types';
 import { auth, db, cleanFirestoreData } from '../firebase';
@@ -26,6 +26,7 @@ interface CartModalProps {
   lang: 'ar' | 'en';
   couponCodeFromWheel?: string;
   siteSettings?: SiteSettings;
+  onUpdateCartItemCustoms: (id: string, customizations: { nameAr: string, nameEn: string, price: number }[]) => void;
 }
 
 export default function CartModal({
@@ -38,7 +39,8 @@ export default function CartModal({
   onCheckout,
   lang,
   couponCodeFromWheel = '',
-  siteSettings
+  siteSettings,
+  onUpdateCartItemCustoms
 }: CartModalProps) {
   const isRtl = lang === 'ar';
 
@@ -48,6 +50,40 @@ export default function CartModal({
   const [couponApplied, setCouponApplied] = useState(false);
   const [couponError, setCouponError] = useState('');
   const [couponSuccessMsg, setCouponSuccessMsg] = useState('');
+
+  // Active customization extra ingredients states
+  const [activeCustomizingItem, setActiveCustomizingItem] = useState<CartItem | null>(null);
+  const [selectedExtras, setSelectedExtras] = useState<{ nameAr: string, nameEn: string, price: number }[]>([]);
+
+  const AVAILABLE_EXTRAS = [
+    { nameAr: 'جبنة موتزاريلا إضافية', nameEn: 'Extra Mozzarella Cheese', price: 15 },
+    { nameAr: 'صوص شيدر كريمي ذائب', nameEn: 'Creamy Melted Cheddar', price: 10 },
+    { nameAr: 'صوص رانش هانتر الأصلي', nameEn: 'Hunter Ranch Sauce', price: 10 },
+    { nameAr: 'قطع فلفل هالبينو حار', nameEn: 'Spicy Jalapenos', price: 8 },
+    { nameAr: 'قطع زبدة المشروم السوتيه', nameEn: 'Sautéed Sliced Mushrooms', price: 12 },
+    { nameAr: 'قطعة فراخ مقرمشة ستريبس', nameEn: 'Extra Crispy Chicken Strip', price: 25 },
+  ];
+
+  const handleOpenIngredientsModal = (item: CartItem) => {
+    setActiveCustomizingItem(item);
+    setSelectedExtras(item.customizations || []);
+  };
+
+  const handleToggleExtra = (extra: { nameAr: string, nameEn: string, price: number }) => {
+    const exists = selectedExtras.some(e => e.nameEn === extra.nameEn);
+    if (exists) {
+      setSelectedExtras(selectedExtras.filter(e => e.nameEn !== extra.nameEn));
+    } else {
+      setSelectedExtras([...selectedExtras, extra]);
+    }
+  };
+
+  const handleSaveExtras = () => {
+    if (activeCustomizingItem) {
+      onUpdateCartItemCustoms(activeCustomizingItem.id, selectedExtras);
+      setActiveCustomizingItem(null);
+    }
+  };
 
   // Checkout info
   const [customerName, setCustomerName] = useState('');
@@ -620,14 +656,28 @@ export default function CartModal({
                         </div>
                       </div>
 
-                      {/* Single trash removal trigger */}
-                      <button
-                        onClick={() => onRemoveItem(item.id)}
-                        className="text-[10px] text-zinc-400 hover:text-red-650 flex items-center gap-1 self-start font-black cursor-pointer py-1.5 transition duration-150"
-                      >
-                        <Trash2 className="w-3.5 h-3.5" />
-                        <span>{isRtl ? 'إزالة السندوتش' : 'Remove item'}</span>
-                      </button>
+                      {/* Action buttons row */}
+                      <div className="flex items-center gap-3.5 mt-2.5 pr-1 flex-row-reverse">
+                        {/* Add Ingredients customizer button */}
+                        <button
+                          type="button"
+                          onClick={() => handleOpenIngredientsModal(item)}
+                          className="text-[10px] text-red-650 hover:text-red-700 hover:underline flex items-center gap-1 font-black cursor-pointer py-1.5 transition"
+                        >
+                          <Plus className="w-3.5 h-3.5" />
+                          <span>{isRtl ? 'تخصيص وإضافة مكونات' : 'Add Ingredients'}</span>
+                        </button>
+
+                        {/* Single trash removal trigger */}
+                        <button
+                          type="button"
+                          onClick={() => onRemoveItem(item.id)}
+                          className="text-[10px] text-zinc-400 hover:text-red-650 flex items-center gap-1 font-black cursor-pointer py-1.5 transition duration-150"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                          <span>{isRtl ? 'إزالة' : 'Remove'}</span>
+                        </button>
+                      </div>
                     </div>
                   </motion.div>
                 ))}
@@ -1019,6 +1069,105 @@ export default function CartModal({
         )}
 
       </motion.div>
+
+      {/* 8. ACTIVE CUSTOMIZING INGREDIENTS OVERLAY DIALOG */}
+      <AnimatePresence>
+        {activeCustomizingItem && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-xs z-[100] flex items-center justify-center p-4"
+          >
+            <motion.div
+              initial={{ scale: 0.95, y: 15 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.95, y: 15 }}
+              className="bg-white rounded-[2.5rem] p-6 max-w-md w-full border border-zinc-150 shadow-2xl relative text-right"
+              dir={isRtl ? 'rtl' : 'ltr'}
+            >
+              {/* Cover Top-Header */}
+              <div className="flex justify-between items-center mb-4 pb-3 border-b border-zinc-100 flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={() => setActiveCustomizingItem(null)}
+                  className="font-bold text-red-600 hover:text-red-700 text-xs cursor-pointer px-3 py-1 bg-zinc-100 hover:bg-zinc-200 rounded-lg transition"
+                >
+                  {isRtl ? 'إلغاء' : 'Cancel'}
+                </button>
+                <h3 className="text-sm sm:text-base font-black text-zinc-950">
+                  {isRtl ? 'تخصيص مكونات ' : 'Customize '} 
+                  <span className="text-red-600">
+                    "{isRtl ? activeCustomizingItem.nameAr : activeCustomizingItem.nameEn}"
+                  </span>
+                </h3>
+              </div>
+
+              <p className="text-[10px] sm:text-xs text-zinc-500 font-bold mb-4 pr-1 leading-relaxed">
+                {isRtl
+                  ? 'اختر مكونات وإضافات هامريّة إضافية لطلبك، سيتم حساب تكلفة مخصصة لكل صنف:'
+                  : 'Select additional ingredients & savory additions for your meal. Custom surcharge is calculated for each selection:'}
+              </p>
+
+              {/* Extras Grid Checkboxes */}
+              <div className="space-y-2.5 max-h-[300px] overflow-y-auto scrollbar-none py-1">
+                {AVAILABLE_EXTRAS.map((extra, index) => {
+                  const isChecked = selectedExtras.some(e => e.nameEn === extra.nameEn);
+                  return (
+                    <button
+                      key={index}
+                      type="button"
+                      onClick={() => handleToggleExtra(extra)}
+                      className={`w-full flex items-center justify-between p-3 rounded-2xl border transition-all text-right cursor-pointer group ${
+                        isChecked
+                          ? 'bg-red-50 border-red-500 text-red-950 shadow-xs'
+                          : 'bg-zinc-50 border-zinc-150 hover:border-zinc-300 text-zinc-800'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <div
+                          className={`w-5 h-5 rounded-md flex items-center justify-center border transition ${
+                            isChecked
+                              ? 'bg-red-600 border-red-600 text-white'
+                              : 'bg-white border-zinc-300 group-hover:border-zinc-400'
+                          }`}
+                        >
+                          {isChecked && <Check className="w-3.5 h-3.5 stroke-[4]" />}
+                        </div>
+                        <span className="text-xs font-black">
+                          {isRtl ? extra.nameAr : extra.nameEn}
+                        </span>
+                      </div>
+                      <span className="font-mono font-black text-[11px] text-zinc-900 bg-white/80 border border-zinc-150 rounded-lg px-2 py-0.5">
+                        +{extra.price} {isRtl ? 'ج.م' : 'EGP'}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Bottom save action */}
+              <div className="mt-6 pt-4 border-t border-zinc-100 flex items-center justify-between flex-row-reverse">
+                <button
+                  type="button"
+                  onClick={handleSaveExtras}
+                  className="px-6 py-3 bg-red-600 hover:bg-red-700 text-white font-black rounded-xl sm:rounded-2xl text-xs sm:text-sm border border-red-700 shadow-md transform active:scale-95 transition cursor-pointer"
+                >
+                  {isRtl ? 'حفظ التغيرات والتخصيص' : 'Save Customizations'}
+                </button>
+                <div className="text-right">
+                  <span className="text-[10px] text-zinc-400 block font-bold leading-none">
+                    {isRtl ? 'الإجمالي الإضافي:' : 'Total Extra:'}
+                  </span>
+                  <span className="font-mono font-black text-red-600 text-base">
+                    {selectedExtras.reduce((sum, e) => sum + e.price, 0)} {isRtl ? 'ج.م' : 'EGP'}
+                  </span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

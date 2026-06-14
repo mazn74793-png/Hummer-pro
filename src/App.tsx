@@ -252,6 +252,62 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
 
+  // Favorites tracking with local fallback & Firestore sync
+  const [favoriteItemIds, setFavoriteItemIds] = useState<string[]>(() => {
+    try {
+      const stored = localStorage.getItem('hummer_favorite_item_ids');
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  useEffect(() => {
+    localStorage.setItem('hummer_favorite_item_ids', JSON.stringify(favoriteItemIds));
+  }, [favoriteItemIds]);
+
+  useEffect(() => {
+    if (!currentUser) return;
+    let active = true;
+    const loadFavorites = async () => {
+      try {
+        const uDoc = await getDoc(doc(db, 'users', currentUser.uid));
+        if (uDoc.exists() && active) {
+          const data = uDoc.data();
+          if (data && Array.isArray(data.favoriteItemIds)) {
+            setFavoriteItemIds(data.favoriteItemIds);
+          }
+        }
+      } catch (err) {
+        console.warn("Could not load user favorites from Firestore:", err);
+      }
+    };
+    loadFavorites();
+    return () => {
+      active = false;
+    };
+  }, [currentUser]);
+
+  const handleToggleFavorite = async (itemId: string) => {
+    let updated: string[];
+    if (favoriteItemIds.includes(itemId)) {
+      updated = favoriteItemIds.filter(id => id !== itemId);
+    } else {
+      updated = [...favoriteItemIds, itemId];
+    }
+    setFavoriteItemIds(updated);
+
+    if (currentUser) {
+      try {
+        await setDoc(doc(db, 'users', currentUser.uid), {
+          favoriteItemIds: updated
+        }, { merge: true });
+      } catch (err) {
+        console.warn("Could not save toggled favorites to Firestore:", err);
+      }
+    }
+  };
+
   // Active Simulated tracker order
   const [activeOrder, setActiveOrder] = useState<OrderState | null>(null);
   const [justPlacedOrder, setJustPlacedOrder] = useState<OrderState | null>(null);
@@ -1005,6 +1061,26 @@ export default function App() {
     saveCart([]);
   };
 
+  // 5.5. Update cart item customizations
+  const handleUpdateCartItemCustoms = (id: string, customizations: { nameAr: string, nameEn: string, price: number }[]) => {
+    const updated = cartItems.map((ci) => {
+      if (ci.id === id) {
+        const previousCustomizationCost = ci.customizations ? ci.customizations.reduce((sum, c) => sum + c.price, 0) : 0;
+        const originalUnitBasePrice = ci.pricePerUnit - previousCustomizationCost;
+        const newCustomizationCost = customizations.reduce((sum, c) => sum + c.price, 0);
+        const newPricePerUnit = originalUnitBasePrice + newCustomizationCost;
+        
+        return {
+          ...ci,
+          customizations,
+          pricePerUnit: newPricePerUnit
+        };
+      }
+      return ci;
+    });
+    saveCart(updated);
+  };
+
   // 6. Handle successful checkout order placing
   const handleCheckout = async (orderDetails: {
     customerName: string;
@@ -1194,7 +1270,12 @@ export default function App() {
 
   // Filter Menu List
   const filteredMenuItems = menuItems.filter((item) => {
-    const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    let matchesCategory = false;
+    if (selectedCategory === 'favorites') {
+      matchesCategory = favoriteItemIds.includes(item.id);
+    } else {
+      matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
+    }
     const matchesSearch =
       item.nameAr.toLowerCase().includes(searchQuery.toLowerCase()) ||
       item.nameEn.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -1344,6 +1425,7 @@ export default function App() {
             <div className="flex overflow-x-auto pb-2 scrollbar-none sm:flex-wrap items-center sm:justify-center gap-2 max-w-4xl mx-auto py-1 px-4 justify-start">
               {[
                 { id: 'all', ar: 'الكل دايماً الكسبان', en: 'Show All Meals' },
+                { id: 'favorites', ar: '❤️ مفضلاتي اللذيذة', en: '❤️ My Favorites' },
                 { id: 'crepes', ar: 'الـ كريبات', en: 'Premium Crepes' },
                 { id: 'pizza', ar: 'بيتزا هامر البطل', en: 'Hummer Pizza' },
                 { id: 'fried-chicken', ar: 'الفراخ المقلية', en: 'Fried Chicken' },
@@ -1408,6 +1490,8 @@ export default function App() {
                       onAddToCart={handleAddToCart}
                       lang={lang}
                       isAdmin={isRealAdmin}
+                      isFavorite={favoriteItemIds.includes(item.id)}
+                      onToggleFavorite={handleToggleFavorite}
                     />
                   </motion.div>
                 ))}
@@ -1451,6 +1535,7 @@ export default function App() {
             lang={lang}
             couponCodeFromWheel={chosenCouponCode}
             siteSettings={siteSettings}
+            onUpdateCartItemCustoms={handleUpdateCartItemCustoms}
           />
         )}
       </AnimatePresence>

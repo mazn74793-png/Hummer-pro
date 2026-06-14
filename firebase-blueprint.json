@@ -22,6 +22,7 @@
         "phone": { "type": "string" },
         "email": { "type": "string" },
         "addresses": { "type": "array" },
+        "favoriteItemIds": { "type": "array" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "email"]
@@ -78,6 +79,19 @@
         "createdAt": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "productId", "userName", "rating", "comment", "createdAt"]
+    },
+    "ProductRating": {
+      "title": "Product Rating",
+      "description": "Individual product star rating given by a user",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "productId": { "type": "string" },
+        "rating": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "productId", "rating", "createdAt"]
     }
   },
   "firestore": {
@@ -100,6 +114,10 @@
     "product_comments/{commentId}": {
       "schema": "ProductComment",
       "description": "Product ratings and reviews posted by guests"
+    },
+    "product_ratings/{ratingId}": {
+      "schema": "ProductRating",
+      "description": "Product star ratings given by authenticated users"
     }
   }
 }
