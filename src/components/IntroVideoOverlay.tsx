@@ -1,10 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { SiteSettings } from '../types';
+import { getLargeAsset } from '../utils/indexedDB';
 
-// Use a module-level variable to ensure the intro is played exactly once per page load.
-// This resets on refresh, which means reloading the page always shows the intro,
-// but simple React re-renders or internal state updates do not trigger it again.
 let hasIntroBeenSeenInSession = false;
 
 interface IntroVideoOverlayProps {
@@ -14,7 +12,29 @@ interface IntroVideoOverlayProps {
 }
 
 export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded }: IntroVideoOverlayProps) {
-  const [hasDismissed, setHasDismissed] = useState(() => hasIntroBeenSeenInSession);
+  // 1. Immediately evaluate local storage of siteSettings to avoid any flash or wait for Firestore
+  const [hasDismissed, setHasDismissed] = useState(() => {
+    if (hasIntroBeenSeenInSession) return true;
+    
+    if (typeof window !== 'undefined') {
+      const seen = sessionStorage.getItem('hummer_intro_seen') === 'true';
+      if (seen) return true;
+
+      try {
+        const saved = localStorage.getItem('hummer_site_settings');
+        if (saved) {
+          const parsed = JSON.parse(saved);
+          if (parsed.disableIntro === true) {
+            return true;
+          }
+        }
+      } catch (e) {
+        console.warn("Could not read initial site settings check:", e);
+      }
+    }
+    return false;
+  });
+
   const [videoSrc, setVideoSrc] = useState<string>('');
   const [hasStarted, setHasStarted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -26,66 +46,110 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
   const dismissIntro = () => {
     setHasDismissed(true);
     hasIntroBeenSeenInSession = true;
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem('hummer_intro_seen', 'true');
+    }
   };
 
-  // Once settings are loaded from Firestore, evaluate whether to show or skip
+  // 2. Automatically listen to remote/live disable settings changes from Firestore
   useEffect(() => {
-    if (!isSettingsLoaded) return;
-    if (siteSettings.disableIntro === true) {
+    if (isSettingsLoaded && siteSettings.disableIntro === true) {
       dismissIntro();
     }
   }, [isSettingsLoaded, siteSettings.disableIntro]);
 
-  // Convert Base64 intro video to Blob URL for maximum Safari/iOS performance
+  // 3. Resolve the video URL as fast as humans can see!
   useEffect(() => {
-    if (!isSettingsLoaded) return;
-    if (siteSettings.disableIntro === true) return;
+    if (hasDismissed) return;
 
-    let activeUrl = siteSettings.introVideoUrl || '';
+    let isCancelled = false;
     let objectUrl = '';
 
-    if (activeUrl.startsWith('data:')) {
-      try {
-        const parts = activeUrl.split(';base64,');
-        const contentType = parts[0].split(':')[1] || 'video/mp4';
-        const byteCharacters = atob(parts[1]);
-        const byteNumbers = new Array(byteCharacters.length);
-        for (let i = 0; i < byteCharacters.length; i++) {
-          byteNumbers[i] = byteCharacters.charCodeAt(i);
+    const resolveVideoSource = async () => {
+      // First, check immediate site settings prop (which gets its initial value from localStorage synchronously!)
+      let activeUrl = '';
+      
+      // If it exists in props, use it
+      if (siteSettings && siteSettings.introVideoUrl) {
+        activeUrl = siteSettings.introVideoUrl;
+      } else {
+        // Fallback: double check localStorage synchronously to trigger fast load
+        try {
+          const saved = localStorage.getItem('hummer_site_settings');
+          if (saved) {
+            const parsed = JSON.parse(saved);
+            activeUrl = parsed.introVideoUrl || '';
+          }
+        } catch (e) {}
+      }
+
+      // If activeUrl is empty, use standard default
+      if (!activeUrl) {
+        activeUrl = 'https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41611-large.mp4';
+      }
+
+      // If it points to IndexedDB large assets, retrieve it asynchronously but instantly
+      if (activeUrl === 'local-db:introVideoUrl') {
+        const storedAsset = await getLargeAsset('introVideoUrl');
+        if (storedAsset) {
+          activeUrl = storedAsset;
+        } else {
+          // Fallback if indexedDB is corrupted/empty
+          activeUrl = 'https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41611-large.mp4';
         }
-        const byteArray = new Uint8Array(byteNumbers);
-        const blob = new Blob([byteArray], { type: contentType });
-        objectUrl = URL.createObjectURL(blob);
-        setVideoSrc(objectUrl);
-      } catch (e) {
-        console.error("Error creating Blob URL for video in Safari:", e);
+      }
+
+      if (isCancelled) return;
+
+      // EXTREMELY CRITICAL OPTIMIZATION: Bypassing synchronous "atob()" block.
+      // Synchronous base64 parsing (atob) blocks the browser rendering engine, causing massive stutter / "تعليقة"
+      // we utilize the native browser async 'fetch' stream decoding which converts base64 to Blob 
+      // completely in C++ background threads. This results in zero frame skips!
+      if (activeUrl.startsWith('data:')) {
+        try {
+          const response = await fetch(activeUrl);
+          const blob = await response.blob();
+          if (isCancelled) return;
+          objectUrl = URL.createObjectURL(blob);
+          setVideoSrc(objectUrl);
+        } catch (err) {
+          console.error("Async blob processing failed, falling back to direct data URL:", err);
+          if (!isCancelled) {
+            setVideoSrc(activeUrl);
+          }
+        }
+      } else {
         setVideoSrc(activeUrl);
       }
-    } else {
-      setVideoSrc(activeUrl);
-    }
+    };
+
+    resolveVideoSource();
 
     return () => {
+      isCancelled = true;
       if (objectUrl) {
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [isSettingsLoaded, siteSettings.introVideoUrl, siteSettings.disableIntro]);
+  }, [hasDismissed, siteSettings.introVideoUrl]);
 
-  // Safari/iOS Autoplay Bypassing Effect
+  // 4. Robust autoplay bypassing with automatic gesture support
   useEffect(() => {
     if (!isOpen || !videoSrc) return;
 
     const video = videoRef.current;
     if (!video) return;
 
-    // Direct configuration of DOM node for maximum browser autoplay compatibility
+    // Direct element attribute injection to ensure immediate play
     video.muted = true;
     video.defaultMuted = true;
     video.setAttribute('muted', '');
     video.setAttribute('playsinline', 'true');
     video.setAttribute('webkit-playsinline', 'true');
     video.setAttribute('autoplay', 'true');
+
+    // Trigger video load
+    video.load();
 
     const tryPlay = () => {
       const playPromise = video.play();
@@ -95,10 +159,10 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
             setHasStarted(true);
           })
           .catch(err => {
-            console.warn("Autoplay was restricted by the browser (Low Power Mode or high security active). Awaiting viewport gesture to trigger.", err);
+            console.warn("Autoplay deferred by Safari/Chrome power manager. Establishing fallback gesture listener.", err);
             
-            // To ensure a perfect experience on iOS "Low Power Mode", we register a silent, wide-viewport gesture listener
-            // that will instantly play the video upon the very first touch/scroll anywhere.
+            // To provide a flawless feel on restricted iOS/Low-Power devices, we start playback
+            // on the absolute first screen gesture (touch or interact) anywhere on the viewport.
             const handleFirstGesture = () => {
               if (videoRef.current) {
                 videoRef.current.play()
@@ -107,7 +171,7 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
                     cleanup();
                   })
                   .catch(e => {
-                    console.error("First gesture play failed, bypassing intro safely:", e);
+                    console.error("Gesture starter failed, bypassing intro gracefully:", e);
                     dismissIntro();
                     cleanup();
                   });
@@ -127,17 +191,23 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
       }
     };
 
-    tryPlay();
+    // Use raw requestAnimationFrame to run on the next paint,
+    // avoiding the immediate React frame lock-up. This deletes the stutter!
+    const frameId = requestAnimationFrame(() => {
+      tryPlay();
+    });
+
+    return () => {
+      cancelAnimationFrame(frameId);
+    };
   }, [isOpen, videoSrc]);
 
-  // Safety protection: auto close if loading takes longer than 15 seconds to prevent frozen overlay
+  // 5. Safety watchdog: close if loading is extremely slow
   useEffect(() => {
     if (!isOpen) return;
-
     const safetyTimeout = setTimeout(() => {
       dismissIntro();
     }, 15000);
-
     return () => clearTimeout(safetyTimeout);
   }, [isOpen]);
 
@@ -170,7 +240,7 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
     if (!video) return;
 
     if (!video.paused) {
-      // Tap anywhere on progress skips the intro and enters!
+      // Tap skips intro and enters immediately!
       dismissIntro();
     } else {
       video.play()
@@ -194,11 +264,6 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
           onTouchStart={handleOverlayClick}
           className="fixed inset-0 z-[9999] bg-[#0e0e11] flex items-center justify-center overflow-hidden select-none pointer-events-auto cursor-pointer"
         >
-          {/* 
-            By only rendering the video element when videoSrc is fully resolved,
-            and attaching a `key={videoSrc}`, we force the video to mount already having the src.
-            This is highly recommended for Safari autoplay.
-          */}
           {videoSrc && (
             <video
               key={videoSrc}
@@ -215,21 +280,23 @@ export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded
               onLoadedMetadata={handleLoadedMetadata}
               onError={(e) => {
                 if (videoSrc) {
-                  console.warn("Media file loading exception, auto-bypassing:", e);
+                  console.warn("Media error, skipping to homepage gently:", e);
                   dismissIntro();
                 }
               }}
-              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+              className={`absolute inset-0 w-full h-full object-cover pointer-events-none transition-opacity duration-500 ${
+                hasStarted ? 'opacity-100' : 'opacity-0'
+              }`}
               id="intro-cinematic-video"
             />
           )}
 
-          {/* Loading spinner - stays beautifully clean unless network load is very slow */}
-          {!hasStarted && isSettingsLoaded && !siteSettings.disableIntro && (
-            <div className="absolute inset-x-0 bottom-12 flex flex-col items-center justify-center text-center space-y-2 text-white/50">
-              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-              <p className="text-[10px] font-mono tracking-wider uppercase">
-                {isRtl ? 'جاري التحميل...' : 'Loading...'}
+          {/* Centered minimalist spinner while resolving video to maintain high premium vibe */}
+          {!hasStarted && !siteSettings.disableIntro && (
+            <div className="absolute inset-x-0 bottom-12 flex flex-col items-center justify-center text-center space-y-2 text-white/40">
+              <div className="w-5 h-5 border-2 border-white/10 border-t-white rounded-full animate-spin" />
+              <p className="text-[9px] font-mono tracking-wider uppercase">
+                {isRtl ? 'تحميل...' : 'Loading...'}
               </p>
             </div>
           )}
