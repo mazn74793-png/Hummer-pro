@@ -179,29 +179,6 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
               id="intro-cinematic-video"
             />
           )}
-          
-          {/* Unmuted Helper hint overlay only visible if video fails to play automatically */}
-          {!hasStarted && (
-            <div className="absolute inset-0 flex flex-col items-center justify-center p-6 text-center bg-black/40 backdrop-blur-[2px] transition-opacity duration-300">
-              <motion.div 
-                initial={{ scale: 0.95, opacity: 0 }}
-                animate={{ scale: 1, opacity: 1 }}
-                className="max-w-md bg-zinc-900/90 border border-zinc-800 p-6 rounded-2xl shadow-2xl text-white space-y-4"
-              >
-                <div className="w-12 h-12 bg-amber-500/20 text-amber-400 rounded-full flex items-center justify-center mx-auto animate-bounce">
-                  🎬
-                </div>
-                <h4 className="text-sm font-black tracking-tight">
-                  {isRtl ? 'اضغط أي مكان لتشغيل الفيديو ومواصلة التصفح' : 'Tap anywhere to start cinematic intro'}
-                </h4>
-                <p className="text-[11px] text-zinc-400">
-                  {isRtl 
-                    ? 'نظراً لقيود أجهزة iPhone ومتصفحات Safari، يرجى لمس الشاشة للبدء فوراً.'
-                    : 'Due to Safari & iOS browser media policies, a tap is required to start.'}
-                </p>
-              </motion.div>
-            </div>
-          )}
         </motion.div>
       )}
     </AnimatePresence>
