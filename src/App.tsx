@@ -53,7 +53,7 @@ const DEFAULT_SITE_SETTINGS: SiteSettings = {
   promoBannerAr: 'عروض الصيف من هامر! خصم ١٠٪ على كل الكريبات بـ كود HUMMER10',
   promoBannerEn: 'Summer Deals! 10% OFF all crepes with code HUMMER10',
   introVideoUrl: 'https://assets.mixkit.co/videos/preview/mixkit-chef-preparing-a-fresh-vegetable-salad-41611-large.mp4',
-  disableIntro: true,
+  disableIntro: false,
   systemApiKey: '',
   systemWebhookUrl: '',
   socialFacebook: 'https://facebook.com',
