@@ -189,6 +189,8 @@ export default function App() {
     return DEFAULT_SITE_SETTINGS;
   });
 
+  const [isSettingsLoaded, setIsSettingsLoaded] = useState<boolean>(false);
+
   // Dynamically synchronize the browser tab favicon to match the chosen custom siteSettings logo
   useEffect(() => {
     let logoUrl = '/logo.png';
@@ -468,9 +470,13 @@ export default function App() {
             logoUrl: logoUrl || prev.logoUrl,
             introVideoUrl: introVideoUrl || prev.introVideoUrl
           }));
+          setIsSettingsLoaded(true);
+        } else {
+          setIsSettingsLoaded(true);
         }
       },
       (err) => {
+        setIsSettingsLoaded(true);
         if (err && (err.message.includes('offline') || err.message.includes('unavailable'))) {
           console.warn("Global settings listener operating offline.");
         } else {
@@ -1268,7 +1274,7 @@ export default function App() {
   return (
     <div className="min-h-screen flex flex-col justify-between font-sans bg-zinc-50 text-[#18181b]" id="root-viewport">
       {/* 0. Cinematic Welcome Intro Showcase */}
-      <IntroVideoOverlay siteSettings={siteSettings} lang={lang} />
+      <IntroVideoOverlay siteSettings={siteSettings} lang={lang} isSettingsLoaded={isSettingsLoaded} />
 
       {/* 1. Sticky Navigation Header */}
       <Header

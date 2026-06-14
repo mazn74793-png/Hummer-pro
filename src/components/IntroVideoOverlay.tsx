@@ -5,28 +5,27 @@ import { SiteSettings } from '../types';
 interface IntroVideoOverlayProps {
   siteSettings: SiteSettings;
   lang: 'ar' | 'en';
+  isSettingsLoaded: boolean;
 }
 
-export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOverlayProps) {
-  // To avoid flashing the website first before remote Firestore settings arrive, 
-  // we start with dismissed=false if they haven't seen it in this session.
+export default function IntroVideoOverlay({ siteSettings, lang, isSettingsLoaded }: IntroVideoOverlayProps) {
+  // Check session storage to see if they completed the intro
   const [hasDismissed, setHasDismissed] = useState(() => {
     if (typeof window !== 'undefined') {
       return sessionStorage.getItem('hummer_intro_seen') === 'true';
     }
     return false;
   });
-  
+
   const [videoSrc, setVideoSrc] = useState<string>('');
   const [hasStarted, setHasStarted] = useState(false);
   const videoRef = useRef<HTMLVideoElement>(null);
   const lastInteractionTime = useRef<number>(0);
   const isRtl = lang === 'ar';
 
-  // The overlay is shown if not dismissed
   const isOpen = !hasDismissed;
 
-  // Save dismissal state securely in sessionStorage
+  // Save dismissal state in sessionStorage
   const dismissIntro = () => {
     setHasDismissed(true);
     if (typeof window !== 'undefined') {
@@ -34,15 +33,21 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
     }
   };
 
-  // Skip / dismiss instantly if the remote settings are loaded and show that intro is disabled
+  // Once settings are loaded from Firestore, evaluate whether to show or skip
   useEffect(() => {
+    if (!isSettingsLoaded) return;
+
     if (siteSettings.disableIntro === true) {
+      // If intro is disabled globally, dismiss instantly with a smooth fade-out
       dismissIntro();
     }
-  }, [siteSettings.disableIntro]);
+  }, [isSettingsLoaded, siteSettings.disableIntro]);
 
-  // Track video raw source changes and convert Base64 to Blob URL for Safari/iOS compatibility
+  // Convert Base64 intro video to Blob URL for maximum Safari/iOS performance, Only when settings are loaded!
   useEffect(() => {
+    if (!isSettingsLoaded) return;
+    if (siteSettings.disableIntro === true) return;
+
     let activeUrl = siteSettings.introVideoUrl || '';
     let objectUrl = '';
 
@@ -72,13 +77,13 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
         URL.revokeObjectURL(objectUrl);
       }
     };
-  }, [siteSettings.introVideoUrl]);
+  }, [isSettingsLoaded, siteSettings.introVideoUrl, siteSettings.disableIntro]);
 
-  // Handle active playback and force start on Safari/iOS devices
+  // Handle playing video automatically on iOS/Safari as soon as videoSrc is resolved
   useEffect(() => {
     const video = videoRef.current;
     if (isOpen && video && videoSrc) {
-      // Force settings on the DOM node directly to ensure Safari compliance
+      // Set playing metadata directly on HTML video tag for aggressive Safari support
       video.defaultMuted = true;
       video.muted = true;
       video.setAttribute('muted', '');
@@ -95,34 +100,41 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
         playPromise.then(() => {
           setHasStarted(true);
         }).catch(err => {
-          console.warn("Autoplay was prevented on iOS Safari. Setting up interactive play listeners without passive flag:", err);
+          console.warn("Autoplay was blocked on iOS Safari. Waiting for user interaction anywhere on screen.");
           
+          // Fallback touch listeners for iOS Safari 
           const playOnInteraction = () => {
             if (videoRef.current) {
               videoRef.current.play()
                 .then(() => {
                   setHasStarted(true);
-                  document.removeEventListener('touchstart', playOnInteraction);
-                  document.removeEventListener('click', playOnInteraction);
+                  cleanup();
                 })
                 .catch(e => console.error("Interactive fallback play failed:", e));
             }
           };
+
+          const cleanup = () => {
+            document.removeEventListener('touchstart', playOnInteraction);
+            document.removeEventListener('click', playOnInteraction);
+          };
           
           document.addEventListener('touchstart', playOnInteraction, { passive: false });
           document.addEventListener('click', playOnInteraction, { passive: false });
+
+          return cleanup;
         });
       }
     }
   }, [isOpen, videoSrc]);
 
-  // Set safety timeout to close the overlay if it gets stuck or settings take too long to load
+  // Safety protection: auto close if loading takes longer than 15 seconds to prevent frozen overlay
   useEffect(() => {
     if (!isOpen) return;
 
     const safetyTimeout = setTimeout(() => {
       dismissIntro();
-    }, 12000); // 12 seconds max safety limit
+    }, 15000);
 
     return () => clearTimeout(safetyTimeout);
   }, [isOpen]);
@@ -140,7 +152,7 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
       const durationMs = videoRef.current.duration * 1000;
       const t = setTimeout(() => {
         dismissIntro();
-      }, durationMs + 400); // 400ms buffer after video naturally finishes
+      }, durationMs + 400); // 400ms buffer 
       return () => clearTimeout(t);
     }
   };
@@ -162,11 +174,10 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
           setHasStarted(true);
         })
         .catch(() => {
-          // If it fails to play even on tap, dismiss it as a fallback
           dismissIntro();
         });
     } else {
-      // If already playing, tap anywhere on the screen skips the video and opens the site!
+      // Tap anywhere skips the cinematic and instantly enters!
       dismissIntro();
     }
   };
@@ -180,9 +191,9 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
           exit={{ opacity: 0, y: -20, transition: { duration: 0.8, ease: 'easeInOut' } }}
           onClick={handleOverlayClick}
           onTouchStart={handleOverlayClick}
-          className="fixed inset-0 z-[9999] bg-zinc-950 flex items-center justify-center overflow-hidden select-none pointer-events-auto cursor-pointer"
+          className="fixed inset-0 z-[9999] bg-[#0e0e11] flex items-center justify-center overflow-hidden select-none pointer-events-auto cursor-pointer"
         >
-          {/* Main Fullscreen Video Background */}
+          {/* If the video source is fully resolved and loading, render the video element */}
           {videoSrc && (
             <video
               ref={videoRef}
@@ -203,6 +214,16 @@ export default function IntroVideoOverlay({ siteSettings, lang }: IntroVideoOver
               className="absolute inset-0 w-full h-full object-cover pointer-events-none"
               id="intro-cinematic-video"
             />
+          )}
+
+          {/* Elegant modern overlay skeleton/spinner to show during the brief loading state */}
+          {!hasStarted && isSettingsLoaded && !siteSettings.disableIntro && (
+            <div className="absolute inset-x-0 bottom-12 flex flex-col items-center justify-center text-center space-y-2 text-white/55">
+              <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+              <p className="text-[10px] font-mono tracking-wider uppercase">
+                {isRtl ? 'جاري التحميل...' : 'Loading cinematic experience...'}
+              </p>
+            </div>
           )}
         </motion.div>
       )}
