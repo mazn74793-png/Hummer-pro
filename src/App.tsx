@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { Sparkles, Utensils, Search, Flame, MapPin, PhoneCall, Clock, HelpCircle, Gift, CheckCircle, ShoppingCart } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -132,6 +132,15 @@ export const playIncomingOrderBell = () => {
     console.warn('Incoming admin order audio alert failed:', err);
   }
 };
+
+// Helper hash function for distinct notes
+function hashCode(str: string) {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = str.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  return hash;
+}
 
 export default function App() {
   const [lang, setLang] = useState<'ar' | 'en'>('ar');
@@ -288,7 +297,7 @@ export default function App() {
     };
   }, [currentUser]);
 
-  const handleToggleFavorite = async (itemId: string) => {
+  const handleToggleFavorite = useCallback(async (itemId: string) => {
     let updated: string[];
     if (favoriteItemIds.includes(itemId)) {
       updated = favoriteItemIds.filter(id => id !== itemId);
@@ -306,7 +315,7 @@ export default function App() {
         console.warn("Could not save toggled favorites to Firestore:", err);
       }
     }
-  };
+  }, [favoriteItemIds, currentUser]);
 
   // Active Simulated tracker order
   const [activeOrder, setActiveOrder] = useState<OrderState | null>(null);
@@ -384,110 +393,10 @@ export default function App() {
   }, []);
 
   // Set up context-aware real-time Firestore database listeners
+  // 1. Real-time global site settings, menu, and branches listener (runs once)
   useEffect(() => {
     const unsubscribers: (() => void)[] = [];
 
-    const isAdmin = isAdminOpen || isRealAdmin;
-
-    if (isAdmin) {
-      // 1. Admin reads all riders with secure error handling
-      const unsubRiders = onSnapshot(
-        collection(db, 'riders'),
-        (snapshot) => {
-          const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-          setRiders(list);
-        },
-        (err) => {
-          console.error("Error syncing riders collection for admin:", err);
-        }
-      );
-      unsubscribers.push(unsubRiders);
-
-      // 2. Admin reads all orders with secure error handling
-      const unsubOrders = onSnapshot(
-        collection(db, 'orders'),
-        (snapshot) => {
-          const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-          list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-
-          let hasNewIncoming = false;
-          snapshot.docChanges().forEach((change) => {
-            if (change.type === 'added') {
-              const id = change.doc.id;
-              if (!knownOrderIdsRef.current.has(id)) {
-                knownOrderIdsRef.current.add(id);
-                if (!isInitialOrdersLoadRef.current) {
-                  hasNewIncoming = true;
-                }
-              }
-            }
-          });
-
-          isInitialOrdersLoadRef.current = false;
-
-          if (hasNewIncoming) {
-            playIncomingOrderBell();
-          }
-
-          setOrders(list);
-
-          // Update active order if visible
-          if (activeOrder) {
-            const matching = list.find(o => o.id === activeOrder.id);
-            if (matching) {
-              setActiveOrder(matching);
-            }
-          }
-        },
-        (err) => {
-          console.error("Error syncing orders collection for admin:", err);
-        }
-      );
-      unsubscribers.push(unsubOrders);
-
-    } else {
-      // Non-admin flow: Only listen to the user's own orders if they are logged in
-      if (currentUser) {
-        const q = query(collection(db, 'orders'), where('userId', '==', currentUser.uid));
-        const unsubUserOrders = onSnapshot(
-          q,
-          (snapshot) => {
-            const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
-            list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
-            setOrders(list);
-
-            if (activeOrder) {
-              const matching = list.find(o => o.id === activeOrder.id);
-              if (matching) {
-                setActiveOrder(matching);
-              }
-            }
-          },
-          (err) => {
-            console.error("Error syncing user's orders:", err);
-          }
-        );
-        unsubscribers.push(unsubUserOrders);
-      }
-
-      // Guest or logged-in active tracked order single document listener
-      if (activeOrder && activeOrder.id) {
-        const unsubActive = onSnapshot(
-          doc(db, 'orders', activeOrder.id),
-          (snapshot) => {
-            if (snapshot.exists()) {
-              setActiveOrder({ id: snapshot.id, ...snapshot.data() } as any);
-            }
-          },
-          (err) => {
-            console.error("Error syncing tracking details for active order:", err);
-          }
-        );
-        unsubscribers.push(unsubActive);
-      }
-    }
-
-    // 3. Real-time global site settings listener (visible to everyone)
     const unsubGlobalSettings = onSnapshot(
       doc(db, 'settings', 'global'),
       async (snapshot) => {
@@ -542,7 +451,6 @@ export default function App() {
     );
     unsubscribers.push(unsubGlobalSettings);
 
-    // 4. Real-time global menu items listener (visible to everyone)
     const unsubGlobalMenu = onSnapshot(
       doc(db, 'menu', 'global'),
       (snapshot) => {
@@ -563,7 +471,6 @@ export default function App() {
     );
     unsubscribers.push(unsubGlobalMenu);
 
-    // 5. Real-time global branches listener (visible to everyone)
     const unsubGlobalBranches = onSnapshot(
       doc(db, 'branches', 'global'),
       (snapshot) => {
@@ -587,7 +494,105 @@ export default function App() {
     return () => {
       unsubscribers.forEach(unsub => unsub());
     };
-  }, [currentUser, activeOrder?.id, isAdminOpen, isRealAdmin]);
+  }, []);
+
+  // 2. Admin real-time subscriptions (riders & orders)
+  useEffect(() => {
+    const isAdmin = isAdminOpen || isRealAdmin;
+    if (!isAdmin) return;
+
+    const unsubscribers: (() => void)[] = [];
+
+    const unsubRiders = onSnapshot(
+      collection(db, 'riders'),
+      (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setRiders(list);
+      },
+      (err) => {
+        console.error("Error syncing riders collection for admin:", err);
+      }
+    );
+    unsubscribers.push(unsubRiders);
+
+    const unsubOrders = onSnapshot(
+      collection(db, 'orders'),
+      (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+        let hasNewIncoming = false;
+        snapshot.docChanges().forEach((change) => {
+          if (change.type === 'added') {
+            const id = change.doc.id;
+            if (!knownOrderIdsRef.current.has(id)) {
+              knownOrderIdsRef.current.add(id);
+              if (!isInitialOrdersLoadRef.current) {
+                hasNewIncoming = true;
+              }
+            }
+          }
+        });
+
+        isInitialOrdersLoadRef.current = false;
+
+        if (hasNewIncoming) {
+           playIncomingOrderBell();
+        }
+
+        setOrders(list);
+      },
+      (err) => {
+        console.error("Error syncing orders collection for admin:", err);
+      }
+    );
+    unsubscribers.push(unsubOrders);
+
+    return () => {
+      unsubscribers.forEach(unsub => unsub());
+    };
+  }, [isAdminOpen, isRealAdmin]);
+
+  // 3. Logged-in user's orders subscription (non-admin flow)
+  useEffect(() => {
+    const isAdmin = isAdminOpen || isRealAdmin;
+    if (isAdmin || !currentUser) return;
+
+    const q = query(collection(db, 'orders'), where('userId', '==', currentUser.uid));
+    const unsubUserOrders = onSnapshot(
+      q,
+      (snapshot) => {
+        const list = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })) as any[];
+        list.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        setOrders(list);
+      },
+      (err) => {
+        console.error("Error syncing user's orders:", err);
+      }
+    );
+
+    return unsubUserOrders;
+  }, [currentUser, isAdminOpen, isRealAdmin]);
+
+  // 4. Single active tracked order subscription (for guest/user status tracking)
+  useEffect(() => {
+    if (!activeOrder || !activeOrder.id) return;
+
+    const unsubActive = onSnapshot(
+      doc(db, 'orders', activeOrder.id),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          const orderData = { id: snapshot.id, ...snapshot.data() } as any;
+          setActiveOrder(orderData);
+        }
+      },
+      (err) => {
+        console.error("Error syncing tracking details for active order:", err);
+      }
+    );
+
+    return unsubActive;
+  }, [activeOrder?.id]);
 
   // Sync state modifications live across tabs/views using standard BroadcastChannel
   useEffect(() => {
@@ -948,7 +953,7 @@ export default function App() {
   };
 
   // 1. Add normal menu item
-  const handleAddToCart = (
+  const handleAddToCart = useCallback((
     item: MenuItem,
     quantity: number,
     selectedSize?: SizeOption,
@@ -996,16 +1001,7 @@ export default function App() {
       price: pricePerUnit * quantity,
       image: item.image
     });
-  };
-
-  // Helper hash function for distinct notes
-  function hashCode(str: string) {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = str.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    return hash;
-  }
+  }, [cartItems]);
 
   // 2. Add custom crepe crafted in Lab
   const handleAddCustomCrepe = (customDetails: {

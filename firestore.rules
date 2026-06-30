@@ -43,14 +43,17 @@ service cloud.firestore {
       allow write: if isAdmin();
     }
 
-    // Riders Collection
+    // Riders Collection (Admin access only)
     match /riders/{riderId} {
-      allow read, write: if true;
+      allow read, write: if isAdmin();
     }
 
-    // Orders Collection
+    // Orders Collection (Secure access: Anyone can create/track, owners/admins can list, admins can update/delete)
     match /orders/{orderId} {
-      allow read, write: if true;
+      allow create: if true;
+      allow get: if true;
+      allow list: if isAdmin() || (isSignedIn() && resource.data.userId == request.auth.uid);
+      allow update, delete: if isAdmin();
     }
 
     // Product Comments Collection (Public Read/Create, Admin Delete)

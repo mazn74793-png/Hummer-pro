@@ -15,7 +15,7 @@ interface MenuCardProps {
   onToggleFavorite?: (itemId: string) => void;
 }
 
-export default function MenuCard({ 
+const MenuCard = React.memo(function MenuCard({ 
   item, 
   onAddToCart, 
   lang, 
@@ -382,4 +382,6 @@ export default function MenuCard({
       />
     </motion.div>
   );
-}
+})
+
+export default MenuCard;
